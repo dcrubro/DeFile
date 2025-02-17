@@ -1,0 +1,1 @@
+TODO: Instead of manually checking each block for writing (if exists) - Do fopen with mode "x" instead - CStorageLocal.cpp - saveChain() >>> save()
