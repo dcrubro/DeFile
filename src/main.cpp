@@ -125,12 +125,20 @@ int main(int argc, char **argv)
     cout << "Chain intialized!\n";
     cout << "Current block count: " << chain.getBlockCount() << "\n";
 
+
     if (chain.isValid())
         cout << "Chain is valid!\n";
     else
     {
         cout << "INVALID CHAIN\n";
         return 1;
+    }
+
+    //We only save the chain to disk if we know it's valid.
+    if (!isNewChain && params.count("c") != 0) {
+        //TODO: Implement a system where only the unsaved blocks are saved. May implement from latest saved block onwards, or gap filling.
+        cout << "\nSaving chain... This may take a while...\n";
+        chain.save();
     }
 
     CBlock *current = chain.getCurrentBlock();
@@ -177,7 +185,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        uint8_t* garbage = new uint8_t[32];
+        /*uint8_t* garbage = new uint8_t[32];
         for(uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;
         chain.appendToCurrentBlock(garbage, 32);
@@ -190,6 +198,7 @@ int main(int argc, char **argv)
         cout << "Next block mined.\n";
 
         cout << "Previous Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
+        */    
     }
     cout << "Current block count: " << chain.getBlockCount() << "\n";
 

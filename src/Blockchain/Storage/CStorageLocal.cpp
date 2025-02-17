@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdexcept>
+#include <iostream>
 
 namespace DeFile::Blockchain
 {
@@ -31,7 +32,7 @@ namespace DeFile::Blockchain
         }
 
         CStorageLocal::~CStorageLocal()
-        {            
+        {
         }
 
         void CStorageLocal::loadChain(std::vector<CBlock*>* chain)
@@ -59,6 +60,24 @@ namespace DeFile::Blockchain
                 memcpy(&chainSize, mMetaData["BLOCK_COUNT"].data(), sizeof(uint64_t));
                 if(chain->size() != chainSize)
                     throw std::runtime_error("Manifest: Chain size does not match BLOCK_COUNT.");
+            }
+        }
+
+        void CStorageLocal::saveChain(std::vector<CBlock*>* chain) {
+            std::basic_string<uint8_t> lastSavedBlockHash = mMetaData["LAST_BLOCK_HASH_STR"];
+            std::cout << "\nLast known block: " << lastSavedBlockHash.c_str() << "\n";
+
+            bool hashHit = false;
+
+            for (int i = 0; i < chain->size(); i++) {
+                CBlock* block = chain->at(i);
+                if (strcmp((char*)lastSavedBlockHash.data(), block->getHashStr().c_str()) == 0)
+                    hashHit = true;
+                
+                if (hashHit) {
+                    this->save(block, chain->size());
+                    continue;
+                }
             }
         }
 

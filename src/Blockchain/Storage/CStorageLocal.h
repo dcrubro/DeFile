@@ -31,9 +31,11 @@ namespace DeFile::Blockchain
             ~CStorageLocal();
 
             virtual void loadChain(std::vector<CBlock*>* chain);
+            virtual void saveChain(std::vector<CBlock*>* chain);
 
             virtual void load(CBlock* block);
             virtual void save(CBlock* block, uint64_t blockCount);
+
 
             void loadMetaData();
             void saveMetaData();

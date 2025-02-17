@@ -38,6 +38,7 @@ namespace DeFile::Blockchain
                 usleep(1);
             mReady = true;
             mLog.writeLine("Chain ready!");
+            //mLog.writeLine("Chain Difficulty: " + this->mDifficulty);
         }
     }
 
@@ -111,6 +112,11 @@ namespace DeFile::Blockchain
         mCurrentBlock = mChain.back();
         if(mChain.size() > 1)
             nextBlock(false);
+    }
+
+    void CChain::save() {
+        mStorage->saveChain(&mChain);
+        //Prayers
     }
 
     std::vector<CBlock*>* CChain::getChainPtr()

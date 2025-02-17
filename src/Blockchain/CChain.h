@@ -38,6 +38,7 @@ namespace DeFile::Blockchain
         CBlock* getCurrentBlock(); // Gets a pointer to the current block
         CBlock* getGenesisBlock();
         void load();                                                                          // load the chain
+        void save(); // Save the whole chain
         std::vector<CBlock*>* getChainPtr();
         size_t getBlockCount();                                                           // return the number of blocks
         bool isValid();                                                                 // if the chain is valid
