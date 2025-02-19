@@ -73,7 +73,7 @@ namespace DeFile::Blockchain
     {
         mCurrentBlock->calculateHash();
         if(save)
-            mStorage->save(mCurrentBlock, mChain.size());
+            mStorage->save(mCurrentBlock, mChain.size(), true);
         CBlock* block = new CBlock(mCurrentBlock);
         mChain.push_back(block);
         block->mine(mDifficulty);

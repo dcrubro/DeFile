@@ -16,7 +16,7 @@ namespace DeFile::Blockchain
             virtual void saveChain(std::vector<CBlock*>* chain) = 0;    // Save chain to disk
 
             virtual void load(CBlock* block) = 0;                       // Load block
-            virtual void save(CBlock* block, uint64_t blockCount) = 0;  // Save block
+            virtual void save(CBlock* block, uint64_t blockCount, bool checkExistance) = 0;  // Save block
 
             virtual void dispose() = 0;                                 // dispose 
         };

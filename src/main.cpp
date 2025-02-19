@@ -2,6 +2,7 @@
 
 #include "Blockchain/CBlock.h"
 #include "Blockchain/Storage/CStorageLocal.h"
+#include "Blockchain/CWallet.h"
 #include <iostream>
 #include <ctime>
 #include <unistd.h>
@@ -143,8 +144,25 @@ int main(int argc, char **argv)
 
     CBlock *current = chain.getCurrentBlock();
 
+    //Create a new wallet for this session (temporary)
+    CWallet wallet(2048);
+
+    std::cout << "\nPrivate Key: " << wallet.getPrivKey();
+    std::cout << "\nWallet Address: " << wallet.getWalletAddress();
+    std::cout << "\n\n";
+
     if (isNewChain)
     {
+        CTransaction testTx(
+            1, //Version
+            "df1a2696934a22e7853c4c2cd574ed78b78e0c749fa8ff232e2125", //SRC
+            "df1a2696934a22e7853c4c2cd574ed78b78e0c749fa8ff232e2125", //DEST
+            1  //Amount
+        );
+        
+        std::string signedTx = wallet.signTransaction(&testTx);
+        std::cout << "Signed TX: " << signedTx << "\n\n";
+
         uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;

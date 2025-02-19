@@ -67,17 +67,17 @@ namespace DeFile::Blockchain
             std::basic_string<uint8_t> lastSavedBlockHash = mMetaData["LAST_BLOCK_HASH_STR"];
             std::cout << "\nLast known block: " << lastSavedBlockHash.c_str() << "\n";
 
-            bool hashHit = false;
+            //bool hashHit = false;
 
             for (int i = 0; i < chain->size(); i++) {
                 CBlock* block = chain->at(i);
-                if (strcmp((char*)lastSavedBlockHash.data(), block->getHashStr().c_str()) == 0)
+                /*if (strcmp((char*)lastSavedBlockHash.data(), block->getHashStr().c_str()) == 0)
                     hashHit = true;
-                
-                if (hashHit) {
-                    this->save(block, chain->size());
-                    continue;
-                }
+                */
+                //if (hashHit) {
+                this->save(block, chain->size(), true);
+                continue;
+                //}
             }
         }
 
@@ -144,12 +144,17 @@ namespace DeFile::Blockchain
                 throw std::runtime_error("Block file not found.");
         }
 
-        void CStorageLocal::save(CBlock* block, uint64_t blockCount)
+        void CStorageLocal::save(CBlock* block, uint64_t blockCount, bool checkExistance)
         {
             std::string path(mBasePath + block->getHashStr());
-            FILE* file = fopen(path.c_str(), "wb");
-            if(file)
-            {
+            FILE* file;
+
+            if (checkExistance)
+                file = fopen(path.c_str(), "wbx"); // "x" - Check if the file already exists, and return NULL if yes.
+            else
+                file = fopen(path.c_str(), "wb"); // Simply overwrite
+
+            if (file) {
                 fwrite(&Version, sizeof(uint32_t), 1, file);
                 fwrite(block->getHash(), sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);
                 fwrite(block->getPrevHash(), sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);

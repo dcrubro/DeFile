@@ -3,16 +3,19 @@
 #ifndef __C_BLOCK_INCLUDED__
 #define __C_BLOCK_INCLUDED__
 #include "CLog.h"
+#include "CTransaction.h"
 #include <string>
 #include <openssl/sha.h>
 #include <sys/time.h>
 #include <ctime>
+#include <vector>
 
 namespace DeFile::Blockchain
 {
     class CBlock
     {
     private:
+        //Block Header - Hashed data
         uint8_t mHash[SHA256_DIGEST_LENGTH];            // Current hash
         uint8_t mPrevHash[SHA256_DIGEST_LENGTH];        // Prev hash 
         CBlock* mPrevBlock;                             // Pointer to the previous block, will be null 
@@ -21,11 +24,14 @@ namespace DeFile::Blockchain
         time_t mCreatedTS;                              // Timestamp of block creation
         uint32_t mNonce;                                // Nonce of the block
 
+        //Block transaction data - Hashed
+        std::vector<CTransaction*> mTransactions; // Vector of transactions
+
         CLog mLog;
     public:
         CBlock(CBlock* prevBlock, const uint8_t* hash = 0);                      // Constructor
         ~CBlock();                                      //
-        void calculateHash(uint8_t* ret = 0);                           // Calculates sha256 hash
+        void calculateHash(uint8_t* ret = 0);           // Calculates sha256 hash
         uint8_t* getHash();                             // Gets current hash -> mHash
         std::string getHashStr();                       // Gets the string representation of mHash
         CBlock* getPrevBlock();                         // Gets a pointer of the previous block
@@ -33,6 +39,8 @@ namespace DeFile::Blockchain
         bool isDifficulty(int difficulty);              // Difficulty
         void mine(int difficulty);                      // Mine the block 
         uint32_t getNonce();                            // Gets the nonce value
+
+        bool addTransaction(CTransaction* tx);
 
         bool hasHash();                                     //
         bool hasPrevHash();                                     //
