@@ -8,18 +8,20 @@ namespace DeFile::Blockchain {
     void CTransaction::calculateHash(uint8_t* ret)
     {
         //source + destination address, transfered amount, timestamp
-        uint32_t sz = (sizeof(char) * mSourceAddress.size()) * 2 + sizeof(uint64_t) + sizeof(time_t);
+        uint32_t sz = sizeof(uint8_t) + (sizeof(char) * mSourceAddress.size()) + (sizeof(char) * mDestinationAddress.size()) + sizeof(uint64_t) + sizeof(time_t);
         mTxSize = sz;
 
-        uint16_t* buf = new uint16_t[sz];
-        uint16_t* ptr = buf;         // ptr is just a cursor
+        uint32_t* buf = new uint32_t[sz];
+        uint32_t* ptr = buf;         // ptr is just a cursor
 
-        memcpy(ptr, &mSourceAddress, sizeof(std::string) * mSourceAddress.size());
-        ptr += sizeof(std::string) * mSourceAddress.size();
-        memcpy(ptr, &mDestinationAddress, sizeof(std::string) * mDestinationAddress.size());
-        ptr += sizeof(std::string) * mDestinationAddress.size();
-        memcpy(ptr, &mTransferedAmount, sizeof(uint32_t));
-        ptr += sizeof(uint32_t);
+        memcpy(ptr, &mVersion, sizeof(uint8_t));
+        ptr += sizeof(uint8_t);
+        memcpy(ptr, &mSourceAddress, sizeof(char) * mSourceAddress.size());
+        ptr += sizeof(char) * mSourceAddress.size();
+        memcpy(ptr, &mDestinationAddress, sizeof(char) * mDestinationAddress.size());
+        ptr += sizeof(char) * mDestinationAddress.size();
+        memcpy(ptr, &mTransferedAmount, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
         memcpy(ptr, &mTimestamp, sizeof(time_t));
         ptr += sizeof(time_t);
 

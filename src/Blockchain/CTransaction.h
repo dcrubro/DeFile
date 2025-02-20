@@ -31,8 +31,19 @@ namespace DeFile::Blockchain {
 
             void calculateHash(uint8_t* ret = 0);                           // Calculates sha256 hash
             std::string serialize() const {
+                //Convert the hash to a string
+                char buf[SHA256_DIGEST_LENGTH * 2 + 1];
+                char* ptr = buf;
+                memset(buf, 0, SHA256_DIGEST_LENGTH);
+                for(uint32_t n = 0; n < SHA256_DIGEST_LENGTH; n++)
+                {
+                    sprintf(ptr, "%02x", mTxHash[n]);
+                    ptr += 2;
+                }
+                buf[SHA256_DIGEST_LENGTH * 2] = 0;
+
                 std::stringstream ss;
-                ss << mVersion << "," << mSourceAddress << "," << mDestinationAddress << "," << mTransferedAmount << "," << mTimestamp << "," << mTxHash;
+                ss << std::to_string(mVersion) << "," << mSourceAddress << "," << mDestinationAddress << "," << std::to_string(mTransferedAmount) << "," << std::to_string(mTimestamp) << "," << std::string(buf);
                 return ss.str();
             }
 

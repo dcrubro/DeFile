@@ -156,12 +156,16 @@ int main(int argc, char **argv)
         CTransaction testTx(
             1, //Version
             "df1a2696934a22e7853c4c2cd574ed78b78e0c749fa8ff232e2125", //SRC
-            "df1a2696934a22e7853c4c2cd574ed78b78e0c749fa8ff232e2125", //DEST
+            "df1ac964bfc4d4f201a7dc221a080b6364ec30052d33478f4cfd02", //DEST
             1  //Amount
         );
+
+        testTx.calculateHash();
         
+        std::cout << "Original Serialized TX: " << testTx.serialize() << "\n\n";
         std::string signedTx = wallet.signTransaction(&testTx);
         std::cout << "Signed TX: " << signedTx << "\n\n";
+        std::cout << "Sig verification: " << wallet.verifyTransaction(&testTx, signedTx, wallet.getPubKey()) << "\n\n";
 
         uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
