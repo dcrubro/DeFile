@@ -20,6 +20,8 @@ namespace DeFile::Blockchain {
             RSA* mPrivKey;
             std::string mWalletAddress;
             int mPubKeyLen;
+
+            uint16_t mBits;
         public:
             CWallet(int bits);
             ~CWallet();
@@ -28,6 +30,9 @@ namespace DeFile::Blockchain {
             std::string bytesToHex(const unsigned char* data, size_t length) const;
             std::string signTransaction(const CTransaction* tx);
             bool verifyTransaction(const CTransaction* tx, const std::string& sig, const std::string& pubKeyPEM);
+
+            bool loadFromDisk();
+            bool saveToDisk();
 
             std::string getPubKey() const;
             std::string getPrivKey() const;

@@ -20,7 +20,7 @@ namespace DeFile::Blockchain {
         return rsa;
     }
 
-    CWallet::CWallet(int bits) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0) {
+    CWallet::CWallet(int bits) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0), mBits(bits) {
         generateKeypair(bits);
     }
 
@@ -158,5 +158,33 @@ namespace DeFile::Blockchain {
         RSA_free(rsaPubKey);
     
         return result == 1;
+    }
+
+    bool CWallet::loadFromDisk() {
+        std::string metaDataFn("data/wallet");
+        FILE* file = fopen(metaDataFn.c_str(), "rb");
+        if (file) {
+            size_t r = 0;
+
+            uint16_t bits = 0;
+            r = fread(&bits, sizeof(uint16_t), 1, file);
+            if (r != 1)
+                throw std::runtime_error("Could not read bit size.");
+            //TODO: Continue here
+
+            fclose(file);
+        }
+    }
+
+    bool CWallet::saveToDisk() {
+        std::string metaDataFn("data/wallet");
+        FILE* file = fopen(metaDataFn.c_str(), "wb");
+        if (file) {
+            fwrite(&mBits, sizeof(uint16_t), 1, file);
+            fwrite(&getPrivKey(), sizeof(char) * getPrivKey().size(), 1, file);
+            fwrite(&getPubKey(), sizeof(char) * getPubKey().size(), 1, file);
+            fwrite(&getWalletAddress(), sizeof(char) * getWalletAddress().size(), 1, file);
+            fclose(file);
+        }
     }
 }
