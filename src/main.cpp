@@ -145,9 +145,10 @@ int main(int argc, char **argv)
     CBlock *current = chain.getCurrentBlock();
 
     //Create a new wallet for this session (temporary)
-    CWallet wallet(2048);
-
-    std::cout << "\nPrivate Key: " << wallet.getPrivKey();
+    CWallet wallet(false, 2048);
+    std::cout << "Created Wallet.\n\n";
+    if (true) {}
+    std::cout << "\nPrivate Key (Length: " << wallet.getPrivKey().size() << "): " << wallet.getPrivKey();
     std::cout << "\nWallet Address: " << wallet.getWalletAddress();
     std::cout << "\n\n";
 

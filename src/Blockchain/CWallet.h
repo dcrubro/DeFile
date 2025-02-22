@@ -22,8 +22,10 @@ namespace DeFile::Blockchain {
             int mPubKeyLen;
 
             uint16_t mBits;
+
+            void mGenerateKeypairFromPriv();
         public:
-            CWallet(int bits);
+            CWallet(bool generateNew, int bits);
             ~CWallet();
 
             void generateKeypair(int bits = 2048);
@@ -31,6 +33,7 @@ namespace DeFile::Blockchain {
             std::string signTransaction(const CTransaction* tx);
             bool verifyTransaction(const CTransaction* tx, const std::string& sig, const std::string& pubKeyPEM);
 
+            bool checkWalletExistance();
             bool loadFromDisk();
             bool saveToDisk();
 

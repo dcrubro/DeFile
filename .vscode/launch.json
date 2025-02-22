@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/DeFile",
-            "args": [],
+            "args": ["-h192.168.1.31"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

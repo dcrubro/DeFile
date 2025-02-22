@@ -1,27 +1,26 @@
 //Written by Jonas Korene Novak (aka. DcruBro), GPLv3 License
 
 #include "CWallet.h"
+#include "Crypto/CCryptoUtils.h"
 
 namespace DeFile::Blockchain {
-    RSA* loadPublicKeyFromPEM(const std::string& pubkey_pem) {
-        BIO* bio = BIO_new_mem_buf(pubkey_pem.c_str(), -1);
-        if (!bio) {
-            std::cerr << "Error creating BIO" << std::endl;
-            return nullptr;
-        }
-    
-        RSA* rsa = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
-        BIO_free(bio);
-    
-        if (!rsa) {
-            std::cerr << "Error loading public key from PEM: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-        }
-    
-        return rsa;
-    }
+    CWallet::CWallet(bool generateNew, int bits) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0), mBits(bits) {
+        std::cout << "CWallet Constructor: Initializing..." << std::endl;
 
-    CWallet::CWallet(int bits) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0), mBits(bits) {
-        generateKeypair(bits);
+        if (generateNew) {
+            generateKeypair(bits);
+        } else {
+            std::cout << "CWallet: Checking wallet existence..." << std::endl;
+            if (checkWalletExistance()) {
+                if (!this->loadFromDisk()) {
+                    throw std::runtime_error("Failed to load wallet from disk.");
+                }
+            } else {
+                throw std::runtime_error("Wallet does not exist. Initialize with `true`.");
+            }
+        }
+
+        std::cout << "CWallet Constructor: Initialization complete." << std::endl;
     }
 
     CWallet::~CWallet() {
@@ -50,24 +49,82 @@ namespace DeFile::Blockchain {
             return;
         }
 
+        // Ensure mPubKey is initially null
+        if (mPubKey) {
+            OPENSSL_free(mPubKey);
+            mPubKey = nullptr;
+        }
+
         // Get the public key from the private key
-        mPubKeyLen = i2d_RSA_PUBKEY(mPrivKey, &mPubKey);
-        if (mPubKeyLen == -1) {
+        unsigned char* tempPubKey = nullptr;
+        mPubKeyLen = i2d_RSA_PUBKEY(mPrivKey, &tempPubKey);
+        if (mPubKeyLen <= 0) {
+            std::cerr << "Error extracting public key: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+            RSA_free(mPrivKey);
+            BN_free(bn);
+            return;
+        }
+
+        // Allocate memory and copy the key
+        mPubKey = new unsigned char[mPubKeyLen];
+        memcpy(mPubKey, tempPubKey, mPubKeyLen);
+        OPENSSL_free(tempPubKey);
+
+        // Hash the public key using SHA-256
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256(mPubKey, mPubKeyLen, hash);
+
+        // Convert hash to hex string and generate the wallet address
+        mWalletAddress = "df1a" + bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
+
+        // Clean up the big number used for RSA generation
+        BN_free(bn);
+
+        std::cout << "CWallet: Keypair generated successfully." << std::endl;
+
+        saveToDisk();
+    }
+
+    void CWallet::mGenerateKeypairFromPriv() {
+        OpenSSL_add_all_algorithms();
+        ERR_load_BIO_strings();
+        ERR_load_crypto_strings();
+
+        // Generate RSA private key
+        mPrivKey = RSA_new();
+        BIGNUM* bn = BN_new();
+        BN_set_word(bn, RSA_F4);  // public exponent (65537)
+
+        if (RSA_generate_key_ex(mPrivKey, mBits, bn, nullptr) != 1) {
+            std::cerr << "Error generating RSA key: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+            RSA_free(mPrivKey);
+            BN_free(bn);
+            return;
+        }
+
+        // Extract public key from private key
+        unsigned char* tempPubKey = nullptr;
+        mPubKeyLen = i2d_RSA_PUBKEY(mPrivKey, &tempPubKey);
+        if (mPubKeyLen <= 0) {
             std::cerr << "Error getting public key: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
             RSA_free(mPrivKey);
             BN_free(bn);
             return;
         }
 
+        // Allocate memory for mPubKey and copy contents
+        mPubKey = new unsigned char[mPubKeyLen];
+        memcpy(mPubKey, tempPubKey, mPubKeyLen);
+        OPENSSL_free(tempPubKey); // Free the buffer allocated by OpenSSL
+
         // Hash the public key using SHA-256
         unsigned char hash[SHA256_DIGEST_LENGTH];
         SHA256(mPubKey, mPubKeyLen, hash);
 
-        // Convert hash to a string and generate the wallet address
-        std::string hash_str = bytesToHex(hash, SHA256_DIGEST_LENGTH);
-        mWalletAddress = "df1a" + hash_str.substr(0, 50); // Prefix with "df1a"
+        // Convert hash to hex string and generate the wallet address
+        mWalletAddress = "df1a" + bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
 
-        // Clean up the big number used for RSA generation
+        // Clean up
         BN_free(bn);
     }
 
@@ -145,7 +202,7 @@ namespace DeFile::Blockchain {
             sscanf(sig.c_str() + 2 * i, "%02x", &sigBytes[i]);
         }
 
-        RSA* rsaPubKey = loadPublicKeyFromPEM(pubKeyPEM);
+        RSA* rsaPubKey = Crypto::CryptoUtils::loadPublicKeyFromPEM(pubKeyPEM);
         if (!rsaPubKey) {
             delete[] sigBytes;
             return false;
@@ -160,31 +217,77 @@ namespace DeFile::Blockchain {
         return result == 1;
     }
 
+    bool CWallet::checkWalletExistance() {
+        std::string walletFn("data/wallet");
+        std::cout << "Made it to checking.";
+        //Some stupid code to check existance (basically it will return NULL if it doesn't exist).
+        FILE* file = fopen(walletFn.c_str(), "rb");
+        bool r = file != NULL;
+        fclose(file);
+        return r;
+    }
+
     bool CWallet::loadFromDisk() {
-        std::string metaDataFn("data/wallet");
-        FILE* file = fopen(metaDataFn.c_str(), "rb");
-        if (file) {
-            size_t r = 0;
-
-            uint16_t bits = 0;
-            r = fread(&bits, sizeof(uint16_t), 1, file);
-            if (r != 1)
-                throw std::runtime_error("Could not read bit size.");
-            //TODO: Continue here
-
-            fclose(file);
+        std::string walletFn("data/wallet");
+        FILE* file = fopen(walletFn.c_str(), "rb");
+        if (!file) {
+            return false;
         }
+
+        size_t r = fread(&mBits, sizeof(uint16_t), 1, file);
+        if (r != 1) {
+            fclose(file);
+            throw std::runtime_error("Failed to read bit size from wallet file.");
+        }
+
+        uint32_t len = 0;
+        r = fread(&len, sizeof(uint32_t), 1, file);
+        if (r != 1) {
+            fclose(file);
+            throw std::runtime_error("Failed to read key length from wallet file.");
+        }
+
+        char* privKeyBuffer = new char[len + 1];  // Allocate buffer
+        r = fread(privKeyBuffer, sizeof(char), len, file);
+        fclose(file);
+
+        if (r != len) {
+            delete[] privKeyBuffer;
+            throw std::runtime_error("Failed to read private key from wallet file.");
+        }
+
+        privKeyBuffer[len] = '\0'; // Ensure null termination
+        std::cout << sizeof(privKeyBuffer) << "\n";
+
+        mPrivKey = Crypto::CryptoUtils::loadRSAFromString(std::string(privKeyBuffer));
+        delete[] privKeyBuffer;  // Free buffer
+
+        std::cout << mPrivKey;
+
+        if (!mPrivKey) {
+            //TODO: Fix this
+            throw std::runtime_error("Failed to reconstruct RSA key from disk.");
+        }
+
+        return true;
     }
 
     bool CWallet::saveToDisk() {
-        std::string metaDataFn("data/wallet");
-        FILE* file = fopen(metaDataFn.c_str(), "wb");
+        std::string walletFn("data/wallet");
+        FILE* file = fopen(walletFn.c_str(), "wb");
         if (file) {
+            std::string priv = this->getPrivKey();
+            //std::cout << priv << "\n";
+            uint32_t len = priv.size();
+            std::cout << len;
             fwrite(&mBits, sizeof(uint16_t), 1, file);
-            fwrite(&getPrivKey(), sizeof(char) * getPrivKey().size(), 1, file);
-            fwrite(&getPubKey(), sizeof(char) * getPubKey().size(), 1, file);
-            fwrite(&getWalletAddress(), sizeof(char) * getWalletAddress().size(), 1, file);
+            fwrite(&len, sizeof(uint32_t), 1, file);
+            fwrite(&priv, sizeof(char), len, file);
             fclose(file);
+
+            return true;
         }
+
+        return false;
     }
 }
