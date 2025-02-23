@@ -6,6 +6,10 @@ set(PROJECT_NAME "DeFile")
 # Project name and language
 project(${PROJECT_NAME} VERSION 0.1 LANGUAGES CXX)
 
+# Set debug mode
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -16,18 +20,23 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 # Add the executable by specifying all source files
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# Dependencies
-find_package(ssl)
-find_package(crypto)
-target_link_libraries(${PROJECT_NAME} ssl crypto)
+# Dependencies: OpenSSL
+find_package(OpenSSL REQUIRED)
 
-# Optionally set compiler flags (optional)
+# Dependencies: secp256k1
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SECP256K1 REQUIRED libsecp256k1)
+
+# Include directories
+target_include_directories(${PROJECT_NAME} PRIVATE ${SECP256K1_INCLUDE_DIRS})
+
+# Link against OpenSSL and secp256k1
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::Crypto OpenSSL::SSL ${SECP256K1_LIBRARIES})
+
+# Optionally set compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 endif()
 
-# Optionally set the version info for the target
-set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
-
 # Optionally install the target (for example, into the /bin directory)
-install(TARGETS ${PROJECT_NAME} DESTINATION build)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)

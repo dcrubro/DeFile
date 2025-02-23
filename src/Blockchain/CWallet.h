@@ -7,9 +7,15 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/bio.h>
+#include <secp256k1.h>
+#include <secp256k1_recovery.h>
+#include <random>
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <sstream>
+#include <vector>
+#include <cstring>
 
 #include "CTransaction.h"
 
@@ -17,28 +23,31 @@ namespace DeFile::Blockchain {
     class CWallet {
         private:
             unsigned char* mPubKey;
-            RSA* mPrivKey;
+            //RSA* mPrivKey;
+            unsigned char* mPrivKey;
             std::string mWalletAddress;
             int mPubKeyLen;
-
-            uint16_t mBits;
-
-            void mGenerateKeypairFromPriv();
         public:
-            CWallet(bool generateNew, int bits);
+            CWallet(bool generateNew);
             ~CWallet();
 
-            void generateKeypair(int bits = 2048);
+            void generateKeypair();
+            void generateKeypairFromPriv(bool save = false);
+            std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen);
+            std::vector<std::string> splitTransactionData(const std::string& data);
             std::string bytesToHex(const unsigned char* data, size_t length) const;
+            std::vector<unsigned char> hexToBytes(const std::string& hex) const;
             std::string signTransaction(const CTransaction* tx);
-            bool verifyTransaction(const CTransaction* tx, const std::string& sig, const std::string& pubKeyPEM);
+            bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey);
 
             bool checkWalletExistance();
             bool loadFromDisk();
             bool saveToDisk();
 
-            std::string getPubKey() const;
-            std::string getPrivKey() const;
+            unsigned char* getPubKey() const { return mPubKey; }
+            unsigned char* getPrivKey() const { return mPrivKey; }
+            std::string getPubKeyStr() const;
+            std::string getPrivKeyStr() const;
             std::string getWalletAddress() const { return mWalletAddress; }
             int getPubKeyLen() { return mPubKeyLen; }
     };

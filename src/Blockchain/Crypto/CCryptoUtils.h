@@ -45,6 +45,13 @@ namespace DeFile::Blockchain::Crypto {
             
                 return rsa;
             }
+
+            static void sha256(const unsigned char* data, size_t len, unsigned char* out) {
+                SHA256_CTX ctx;
+                SHA256_Init(&ctx);
+                SHA256_Update(&ctx, data, len);
+                SHA256_Final(out, &ctx);
+            }
     };
 }
 

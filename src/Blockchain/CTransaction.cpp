@@ -8,22 +8,22 @@ namespace DeFile::Blockchain {
     void CTransaction::calculateHash(uint8_t* ret)
     {
         //source + destination address, transfered amount, timestamp
-        uint32_t sz = sizeof(uint8_t) + (sizeof(char) * mSourceAddress.size()) + (sizeof(char) * mDestinationAddress.size()) + sizeof(uint64_t) + sizeof(time_t);
+        uint32_t sz = sizeof(uint8_t) + (sizeof(char) * mSourceAddress.size()) + (sizeof(char) * mDestinationAddress.size()) + sizeof(uint64_t) + sizeof(uint64_t);
         mTxSize = sz;
 
-        uint32_t* buf = new uint32_t[sz];
-        uint32_t* ptr = buf;         // ptr is just a cursor
+        uint8_t* buf = new uint8_t[sz];
+        uint8_t* ptr = buf;         // ptr is just a cursor
 
         memcpy(ptr, &mVersion, sizeof(uint8_t));
         ptr += sizeof(uint8_t);
-        memcpy(ptr, &mSourceAddress, sizeof(char) * mSourceAddress.size());
+        memcpy(ptr, mSourceAddress.c_str(), sizeof(char) * mSourceAddress.size());
         ptr += sizeof(char) * mSourceAddress.size();
-        memcpy(ptr, &mDestinationAddress, sizeof(char) * mDestinationAddress.size());
+        memcpy(ptr, mDestinationAddress.c_str(), sizeof(char) * mDestinationAddress.size());
         ptr += sizeof(char) * mDestinationAddress.size();
         memcpy(ptr, &mTransferedAmount, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
-        memcpy(ptr, &mTimestamp, sizeof(time_t));
-        ptr += sizeof(time_t);
+        memcpy(ptr, &mTimestamp, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
 
         // libssl hashing
         SHA256_CTX sha256;
@@ -60,5 +60,9 @@ namespace DeFile::Blockchain {
 
     uint16_t CTransaction::getTxSize() {
         return mTxSize + sizeof(uint16_t) + sizeof(uint8_t);
+    }
+
+    uint16_t CTransaction::getTxSizeSerialized() {
+        return this->serialize().size();
     }
 }

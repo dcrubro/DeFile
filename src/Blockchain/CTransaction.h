@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <time.h>
 
+#include "CTimeUtils.h"
+
 namespace DeFile::Blockchain {
     class CTransaction {
         private:
@@ -16,15 +18,13 @@ namespace DeFile::Blockchain {
             std::string mSourceAddress;
             std::string mDestinationAddress;
             uint64_t mTransferedAmount;
-            time_t mTimestamp;
+            uint64_t mTimestamp;
             uint8_t mTxHash[SHA256_DIGEST_LENGTH];
             
             uint16_t mTxSize; // Size of the transaction. This should only be accessed after hashing.
-
-            uint8_t mDecimals = 12; //Currency decimal count. Effective transfer is mTransferedAmount / decimals.
         public:
             CTransaction(uint8_t version, const std::string &srcAddr, const std::string &destAddr, uint64_t amount)
-             : mVersion(version), mSourceAddress(srcAddr), mDestinationAddress(destAddr), mTransferedAmount(amount), mTimestamp(time(0)) {
+             : mVersion(version), mSourceAddress(srcAddr), mDestinationAddress(destAddr), mTransferedAmount(amount), mTimestamp(CTimeUtils::getUnixTimestampNS()) {
                 memset(mTxHash, 0, SHA256_DIGEST_LENGTH);     // mHash nulls 
             }
             ~CTransaction();
@@ -52,10 +52,10 @@ namespace DeFile::Blockchain {
             std::string getDestinationAddress() { return mDestinationAddress; }
             uint64_t getTransferedAmount() { return mTransferedAmount; }
             time_t getTimestamp() { return mTimestamp; }
-            uint8_t getDecimals() { return mDecimals; }
             uint8_t* getHash();                                             // Gets current hash -> mHash
             std::string getHashStr();                                       // Gets the string representation of mHash
             uint16_t getTxSize();                                           // Returns the size of the transaction + other data. This should be called after the hashing process.
+            uint16_t getTxSizeSerialized();                                 // Returns the size of the serialized transaction + other data. This should be called after the hashing process.
     };
 }
 

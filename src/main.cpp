@@ -34,8 +34,8 @@ void printChain(CChain* chain) {
     CBlock *cur = chain->getCurrentBlock();
     do
     {
-        time_t ts = cur->getCreatedTS();
-        string tstr(ctime(&ts));
+        uint64_t ts = cur->getCreatedTS();
+        string tstr(std::to_string(ts));
         tstr.resize(tstr.size() - 1);
         if(cur == chain->getCurrentBlock())
             cout << "CURRENT\t" << cur->getHashStr() << "\tTimeStamp " << tstr << "\tData Size " << cur->getDataSize() << "\n";
@@ -145,10 +145,10 @@ int main(int argc, char **argv)
     CBlock *current = chain.getCurrentBlock();
 
     //Create a new wallet for this session (temporary)
-    CWallet wallet(false, 2048);
+    CWallet wallet(true);
     std::cout << "Created Wallet.\n\n";
-    if (true) {}
-    std::cout << "\nPrivate Key (Length: " << wallet.getPrivKey().size() << "): " << wallet.getPrivKey();
+    //if (true) {}
+    std::cout << "\nPrivate Key (Length: " << wallet.getPrivKeyStr().size() << "): " << wallet.getPrivKey();
     std::cout << "\nWallet Address: " << wallet.getWalletAddress();
     std::cout << "\n\n";
 
@@ -156,28 +156,24 @@ int main(int argc, char **argv)
     {
         CTransaction testTx(
             1, //Version
-            "df1a2696934a22e7853c4c2cd574ed78b78e0c749fa8ff232e2125", //SRC
+            wallet.getWalletAddress(), //SRC
             "df1ac964bfc4d4f201a7dc221a080b6364ec30052d33478f4cfd02", //DEST
             1  //Amount
         );
 
-        testTx.calculateHash();
-        
-        std::cout << "Original Serialized TX: " << testTx.serialize() << "\n\n";
         std::string signedTx = wallet.signTransaction(&testTx);
-        std::cout << "Signed TX: " << signedTx << "\n\n";
-        std::cout << "Sig verification: " << wallet.verifyTransaction(&testTx, signedTx, wallet.getPubKey()) << "\n\n";
 
-        uint8_t *garbage = new uint8_t[32];
+        /*uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;
 
-        cout << "Garbage generated.\n";
+        cout << "Garbage generated.\n";*/
 
-        chain.appendToCurrentBlock(garbage, 32);
-        delete[] garbage;
+        //chain.appendToCurrentBlock(garbage, 32);
+        chain.appendTxToCurrentBlock(signedTx);
+        //delete[] garbage;
 
-        cout << "Garbage appended to current block.\n";
+        cout << "TX appended to current block.\n";
 
         chain.nextBlock();
 
@@ -185,17 +181,18 @@ int main(int argc, char **argv)
 
         cout << "Current Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
 
-        int blocksNumToGen = 4;
+        int blocksNumToGen = 2;
 
         for (int i = 0; i < blocksNumToGen; i++) {
-            garbage = new uint8_t[32];
+            /*garbage = new uint8_t[32];
             for (uint32_t n = 0; n < 32; n++)
                 garbage[n] = clock() % 255;
 
             cout << "Garbage generated.\n";
 
-            chain.appendToCurrentBlock(garbage, 32);
-            delete[] garbage;
+            chain.appendToCurrentBlock(garbage, 32);*/
+            chain.appendTxToCurrentBlock(signedTx);
+            //delete[] garbage;
 
             cout << "Garbage appended to current block.\n";
 

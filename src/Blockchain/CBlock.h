@@ -9,6 +9,10 @@
 #include <sys/time.h>
 #include <ctime>
 #include <vector>
+#include <chrono>
+
+#include "CTimeUtils.h"
+#include "CWallet.h"
 
 namespace DeFile::Blockchain
 {
@@ -21,11 +25,11 @@ namespace DeFile::Blockchain
         CBlock* mPrevBlock;                             // Pointer to the previous block, will be null 
         uint8_t* mData;                                 // Byte data of the transactions
         uint32_t mDataSize;                             // Size of the data
-        time_t mCreatedTS;                              // Timestamp of block creation
+        uint64_t mCreatedTS;                            // Timestamp of block creation
         uint32_t mNonce;                                // Nonce of the block
 
         //Block transaction data - Hashed
-        std::vector<CTransaction*> mTransactions; // Vector of transactions
+        std::vector<std::string> mTransactions; // Vector of signed transaction hex strings
 
         CLog mLog;
     public:
@@ -40,7 +44,8 @@ namespace DeFile::Blockchain
         void mine(int difficulty);                      // Mine the block 
         uint32_t getNonce();                            // Gets the nonce value
 
-        bool addTransaction(CTransaction* tx);
+        void addTransactionWithSign(CTransaction* tx, CWallet* srcWallet); //Adds a transaction to the block (auto-signed).
+        void addTransaction(std::string &signedTx); //Adds a foreign transaction to the block (needs to be pre-signed). It also assumes that it's valid - make sure to confirm somewhere else.
 
         bool hasHash();                                     //
         bool hasPrevHash();                                     //
@@ -49,12 +54,14 @@ namespace DeFile::Blockchain
         void setPrevHash(const uint8_t* prevHash);              //
         void setPrevBlock(CBlock* block);                       //
 
-        time_t getCreatedTS();                                  //
-        void setCreatedTS(time_t createdTS);                    //
+        uint64_t getCreatedTS();                                  //
+        void setCreatedTS(uint64_t createdTS);                    //
         void setNonce(uint32_t nonce);                          //
         uint32_t getDataSize();                                 //
         uint8_t* getData();                                     //
         void setAllocatedData(uint8_t* data, uint32_t sz);      //
+        std::vector<std::string> getTransactions() { return mTransactions; }
+        void setTransactions(std::vector<std::string> &transactions) { mTransactions = transactions; }
 
         bool isValid();
     };

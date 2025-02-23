@@ -69,6 +69,14 @@ namespace DeFile::Blockchain
         mCurrentBlock->appendData(data, size);
     }
 
+    void CChain::appendTxToCurrentBlockWithSign(CTransaction *tx, CWallet *srcWallet) {
+        mCurrentBlock->addTransactionWithSign(tx, srcWallet);
+    }
+
+    void CChain::appendTxToCurrentBlock(std::string &signedTx) {
+        mCurrentBlock->addTransaction(signedTx);
+    }
+
     void CChain::nextBlock(bool save, bool distribute)
     {
         mCurrentBlock->calculateHash();
