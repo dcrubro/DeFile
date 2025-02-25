@@ -23,7 +23,7 @@ namespace DeFile::Blockchain
         uint8_t mHash[SHA256_DIGEST_LENGTH];            // Current hash
         uint8_t mPrevHash[SHA256_DIGEST_LENGTH];        // Prev hash 
         CBlock* mPrevBlock;                             // Pointer to the previous block, will be null 
-        uint8_t* mData;                                 // Byte data of the transactions
+        uint8_t* mData;                                 // Byte data of the transactions - We can use this to maybe sneak in some messages into the block :)
         uint32_t mDataSize;                             // Size of the data
         uint64_t mCreatedTS;                            // Timestamp of block creation
         uint32_t mNonce;                                // Nonce of the block

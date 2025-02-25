@@ -33,7 +33,13 @@ namespace DeFile::Blockchain
 
     void CBlock::calculateHash(uint8_t* ret) {
         uint32_t szTxs = 0;
-        uint32_t sz = (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t);
+        uint32_t sz = (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t) + mDataSize;
+
+        //Add the size of the transactions to actually allocate the correct size.
+        for (int i = 0; i < mTransactions.size(); i++) {
+            uint32_t szTx = mTransactions[i].size();
+            sz += szTx;
+        }
 
         uint8_t* buf = new uint8_t[sz];
         uint8_t* ptr = buf;         // ptr is just a cursor
@@ -42,16 +48,15 @@ namespace DeFile::Blockchain
         ptr += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
         memcpy(ptr, &mCreatedTS, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
-        /*if(mDataSize != 0)
+        if(mDataSize != 0)
         {
             memcpy(ptr, mData, mDataSize);
             ptr += mDataSize;
-        }*/
+        }
         memcpy(ptr, &mNonce, sizeof(uint32_t));
         ptr += sizeof(uint32_t);
         for (int i = 0; i < mTransactions.size(); i++) {
             uint32_t szTx = mTransactions[i].size();
-            sz += szTx;
 
             memcpy(ptr, mTransactions[i].c_str(), szTx);
             ptr += szTx;
@@ -138,13 +143,13 @@ namespace DeFile::Blockchain
 
     void CBlock::addTransactionWithSign(CTransaction* tx, CWallet* srcWallet) {
         tx->calculateHash();
-        this->mTransactions.push_back(srcWallet->signTransaction(tx));
+        mTransactions.push_back(srcWallet->signTransaction(tx));
         mLog.writeLine("Added transaction " + tx->getHashStr() + " to current block.");
     }
     
     void CBlock::addTransaction(std::string &signedTx) {
         //std::cout << signedTx << "\n";
-        this->mTransactions.push_back(signedTx);
+        mTransactions.push_back(signedTx);
         mLog.writeLine("Added foreign transaction to current block.");
     }
 

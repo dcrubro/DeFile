@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     CWallet wallet(true);
     std::cout << "Created Wallet.\n\n";
     //if (true) {}
-    std::cout << "\nPrivate Key (Length: " << wallet.getPrivKeyStr().size() << "): " << wallet.getPrivKey();
+    //std::cout << "\nPrivate Key (Length: " << wallet.getPrivKeyStr().size() << "): " << wallet.getPrivKey();
     std::cout << "\nWallet Address: " << wallet.getWalletAddress();
     std::cout << "\n\n";
 
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 
         cout << "Current Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
 
-        int blocksNumToGen = 2;
+        int blocksNumToGen = 12;
 
         for (int i = 0; i < blocksNumToGen; i++) {
             /*garbage = new uint8_t[32];
@@ -191,7 +191,8 @@ int main(int argc, char **argv)
             cout << "Garbage generated.\n";
 
             chain.appendToCurrentBlock(garbage, 32);*/
-            chain.appendTxToCurrentBlock(signedTx);
+            for (int j = 0; j <= i; j++)
+                chain.appendTxToCurrentBlock(signedTx);
             //delete[] garbage;
 
             cout << "Garbage appended to current block.\n";
