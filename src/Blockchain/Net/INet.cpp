@@ -22,7 +22,7 @@ namespace DeFile::Blockchain
             packet.mVersion = recvUInt();
             packet.mMessageType = (EMessageType)recvUInt();
             packet.mNonce = recvUInt();
-            packet.mCreatedTS = (time_t)recvUInt();
+            packet.mCreatedTS = (uint64_t)recvUInt64();
             // Hash
             uint8_t* hashData = recvDataAlloc(SHA256_DIGEST_LENGTH);
             memcpy(packet.mHash, hashData, SHA256_DIGEST_LENGTH);
@@ -32,11 +32,26 @@ namespace DeFile::Blockchain
             memcpy(packet.mPrevHash, hashData, SHA256_DIGEST_LENGTH);
             delete[] hashData;
             packet.mDataSize = recvUInt();
-            if(packet.mDataSize != 0)
-            {
+            if (packet.mDataSize != 0) {
                 packet.mData = recvDataAlloc(packet.mDataSize);
                 packet.mTrackDataAlloc = true;
             }
+
+            //Recieve the count of transactions
+            uint32_t txAmount = recvUInt();
+            for (int i = 0; i < txAmount; i++) {
+                uint16_t txSize = recvUInt16(); //Recover the tx size
+
+                //Start reading the bytes and construct them into an std::string and push them back to the mTransactions vector
+                uint8_t *buf = new uint8_t[txSize];
+                memcpy(buf, recvDataAlloc(txSize), txSize);
+
+                std::string tx(reinterpret_cast<const char*>(buf), txSize);
+                delete[] buf; //Safely free buffer
+
+                packet.mTransactions.push_back(tx);
+            }
+
             return packet;
         }
 
@@ -47,12 +62,46 @@ namespace DeFile::Blockchain
             sendUInt(packet->mVersion);
             sendUInt(packet->mMessageType);
             sendUInt(packet->mNonce);
-            sendUInt(packet->mCreatedTS);
+            sendUInt64(packet->mCreatedTS);
             sendData(packet->mHash, SHA256_DIGEST_LENGTH);
             sendData(packet->mPrevHash, SHA256_DIGEST_LENGTH);
             sendUInt(packet->mDataSize);
             if(packet->mDataSize != 0 && packet->mData)
                 sendData(packet->mData, packet->mDataSize);
+            
+            //First tell the receiver how many transactions exist in the packet, so they can target the right amount of data
+            uint32_t txAmount = packet->mTransactions.size();
+            sendUInt(txAmount);
+
+            //Send the transactions
+            for (int i = 0; i < txAmount; i++) {
+                std::string tx = packet->mTransactions[i];
+
+                //Send the tx size since the reciever won't know it
+                uint16_t txSize = tx.size();
+                sendUInt16(txSize);
+
+                //Construct the raw byte array to send
+                uint8_t *buf = new uint8_t[txSize];
+                memcpy(buf, tx.data(), txSize);
+
+                sendData(buf, txSize); //Send
+
+                delete[] buf; //Free the memory
+            }
+        }
+
+        uint16_t INet::recvUInt16() {
+            uint16_t netNum = 0;
+            if(recv(mSocket, (void*)&netNum, sizeof(uint16_t), 0) < 0)
+                throw std::runtime_error("Failed to receive UINT16.");
+            return ntohl(netNum);
+        }
+
+        void INet::sendUInt16(uint16_t num) {
+            uint16_t netNum = htonl(num);
+            if(send(mSocket, (void*)&netNum, sizeof(uint16_t), 0) < 0)
+                throw std::runtime_error("Failed to send UINT16.");
         }
 
         uint32_t INet::recvUInt()

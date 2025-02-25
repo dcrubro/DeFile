@@ -19,6 +19,8 @@ namespace DeFile::Blockchain
         private:
             const uint32_t mChunkSize = 2048;   // chunk data size
 
+            uint16_t recvUInt16();
+            void sendUInt16(uint16_t num);
             uint32_t recvUInt();
             void sendUInt(uint32_t num);
             int32_t recvInt();

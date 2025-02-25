@@ -281,6 +281,7 @@ namespace DeFile::Blockchain
                         respPacket.mNonce = block->getNonce();
                         memcpy(respPacket.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
                         memcpy(respPacket.mPrevHash, block->getPrevHash(), SHA256_DIGEST_LENGTH);
+                        respPacket.mTransactions = block->getTransactions();
                         pkg->sendPacket(&respPacket);
                     } while (block = block->getPrevBlock());
                     respPacket.reset();

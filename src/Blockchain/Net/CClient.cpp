@@ -193,6 +193,7 @@ namespace DeFile::Blockchain
                         uint8_t *data = new uint8_t[gotPacket.mDataSize];
                         memcpy(data, gotPacket.mData, gotPacket.mDataSize);
                         block->setAllocatedData(data, gotPacket.mDataSize);
+                        block->setTransactions(gotPacket.mTransactions);
 
                         if(nextBlock)
                             nextBlock->setPrevBlock(block);
@@ -266,8 +267,10 @@ namespace DeFile::Blockchain
             packet.mMessageType = EMT_WRITE_BLOCK;
             packet.mData = block->getData();
             packet.mDataSize = block->getDataSize();
+            packet.mCreatedTS = block->getCreatedTS();
             memcpy(packet.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
             memcpy(packet.mPrevHash, block->getPrevHash(), SHA256_DIGEST_LENGTH);
+            packet.mTransactions = block->getTransactions();
             mQueue.push(packet);
         }
 
