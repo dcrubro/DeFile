@@ -267,7 +267,7 @@ namespace DeFile::Blockchain
             packet.mMessageType = EMT_WRITE_BLOCK;
             packet.mData = block->getData();
             packet.mDataSize = block->getDataSize();
-            packet.mCreatedTS = block->getCreatedTS();
+            //packet.mCreatedTS = block->getCreatedTS();
             memcpy(packet.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
             memcpy(packet.mPrevHash, block->getPrevHash(), SHA256_DIGEST_LENGTH);
             packet.mTransactions = block->getTransactions();
