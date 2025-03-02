@@ -270,7 +270,7 @@ namespace DeFile::Blockchain
             //packet.mCreatedTS = block->getCreatedTS();
             memcpy(packet.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
             memcpy(packet.mPrevHash, block->getPrevHash(), SHA256_DIGEST_LENGTH);
-            packet.mTransactions = block->getTransactions();
+            //packet.mTransactions = block->getTransactions();
             mQueue.push(packet);
         }
 

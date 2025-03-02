@@ -162,7 +162,7 @@ int main(int argc, char **argv)
         );
 
         std::string signedTx = wallet.signTransaction(&testTx);
-
+        std::cout << signedTx << "\n";
         /*uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;
@@ -191,8 +191,7 @@ int main(int argc, char **argv)
             cout << "Garbage generated.\n";
 
             chain.appendToCurrentBlock(garbage, 32);*/
-            for (int j = 0; j <= i; j++)
-                chain.appendTxToCurrentBlock(signedTx);
+            chain.appendTxToCurrentBlock(signedTx);
             //delete[] garbage;
 
             cout << "Garbage appended to current block.\n";

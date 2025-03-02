@@ -40,7 +40,7 @@ namespace DeFile::Blockchain
             //Recieve the count of transactions
             uint32_t txAmount = recvUInt();
             for (int i = 0; i < txAmount; i++) {
-                uint16_t txSize = recvUInt16(); //Recover the tx size
+                uint32_t txSize = recvUInt(); //Recover the tx size
 
                 //Start reading the bytes and construct them into an std::string and push them back to the mTransactions vector
                 uint8_t *buf = new uint8_t[txSize];
@@ -79,7 +79,7 @@ namespace DeFile::Blockchain
 
                 //Send the tx size since the reciever won't know it
                 uint16_t txSize = tx.size();
-                sendUInt16(txSize);
+                sendUInt(txSize);
 
                 //Construct the raw byte array to send
                 uint8_t *buf = new uint8_t[txSize];
