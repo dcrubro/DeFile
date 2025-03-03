@@ -60,6 +60,7 @@ namespace DeFile::Blockchain
                 memset(mPrevHash, 0, SHA256_DIGEST_LENGTH);
                 mDataSize = 0;
                 mData = 0;
+                mTransactions.clear();
             }
 
             void setData(uint8_t* data, uint64_t dataSize, bool trackAlloc = false)

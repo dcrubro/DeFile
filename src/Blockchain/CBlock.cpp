@@ -241,6 +241,22 @@ namespace DeFile::Blockchain
         uint8_t hash[SHA256_DIGEST_LENGTH];
         memset(hash, 0, SHA256_DIGEST_LENGTH);
         calculateHash(hash);
+
+        /*char buf[SHA256_DIGEST_LENGTH * 2 + 1];
+        char* ptr = buf;
+        memset(buf, 0, SHA256_DIGEST_LENGTH);
+        for(uint32_t n = 0; n < SHA256_DIGEST_LENGTH; n++)
+        {
+            sprintf(ptr, "%02x", mPrevHash[n]);
+            ptr += 2;
+        }
+        buf[SHA256_DIGEST_LENGTH * 2] = 0;
+        std::cout << std::string(buf) << "\n";*/
+
+        for (int i = 0; i < mTransactions.size(); i++) {
+            std::cout << mTransactions[i] << "\n";
+        }
+
         return memcmp(mHash, hash, SHA256_DIGEST_LENGTH) == 0;
     }
 }
