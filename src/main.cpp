@@ -158,7 +158,9 @@ int main(int argc, char **argv)
             1, //Version
             wallet.getWalletAddress(), //SRC
             "df1ac964bfc4d4f201a7dc221a080b6364ec30052d33478f4cfd02", //DEST
-            1  //Amount
+            1,  //Amount
+            0,  //SrcNew
+            1   //DestNew
         );
 
         std::string signedTx = wallet.signTransaction(&testTx);

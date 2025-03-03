@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include "CTimeUtils.h"
+#include "Crypto/CCryptoUtils.h"
 
 namespace DeFile::Blockchain {
     class CTransaction {
@@ -18,13 +19,15 @@ namespace DeFile::Blockchain {
             std::string mSourceAddress;
             std::string mDestinationAddress;
             uint64_t mTransferedAmount;
+            uint64_t mSourceNewBalance;
+            uint64_t mDestinationNewBalance;
             uint64_t mTimestamp;
             uint8_t mTxHash[SHA256_DIGEST_LENGTH];
             
             uint16_t mTxSize; // Size of the transaction. This should only be accessed after hashing.
         public:
-            CTransaction(uint8_t version, const std::string &srcAddr, const std::string &destAddr, uint64_t amount)
-             : mVersion(version), mSourceAddress(srcAddr), mDestinationAddress(destAddr), mTransferedAmount(amount), mTimestamp(CTimeUtils::getUnixTimestampNS()) {
+            CTransaction(uint8_t version, const std::string &srcAddr, const std::string &destAddr, uint64_t amount, uint64_t srcBal, uint64_t destBal)
+             : mVersion(version), mSourceAddress(srcAddr), mDestinationAddress(destAddr), mTransferedAmount(amount), mSourceNewBalance(srcBal), mDestinationNewBalance(destBal), mTimestamp(CTimeUtils::getUnixTimestampNS()) {
                 memset(mTxHash, 0, SHA256_DIGEST_LENGTH);     // mHash nulls 
             }
             ~CTransaction();
@@ -43,7 +46,7 @@ namespace DeFile::Blockchain {
                 buf[SHA256_DIGEST_LENGTH * 2] = 0;
 
                 std::stringstream ss;
-                ss << std::to_string(mVersion) << "," << mSourceAddress << "," << mDestinationAddress << "," << std::to_string(mTransferedAmount) << "," << std::to_string(mTimestamp) << "," << std::string(buf);
+                ss << std::to_string(mVersion) << "," << mSourceAddress << "," << mDestinationAddress << "," << std::to_string(mTransferedAmount) << "," << std::to_string(mSourceNewBalance) << "," << std::to_string(mDestinationNewBalance) << "," << std::to_string(mTimestamp) << "," << std::string(buf);
                 return ss.str();
             }
 
@@ -56,6 +59,12 @@ namespace DeFile::Blockchain {
             std::string getHashStr();                                       // Gets the string representation of mHash
             uint16_t getTxSize();                                           // Returns the size of the transaction + other data. This should be called after the hashing process.
             uint16_t getTxSizeSerialized();                                 // Returns the size of the serialized transaction + other data. This should be called after the hashing process.
+        
+            //Statics
+            static std::string decodeTransaction(const std::string &signedTx) {
+                std::vector<unsigned char> signedData = Crypto::CryptoUtils::hexToBytes(signedTx);
+                return std::string(signedData.begin(), signedData.end() - 64);
+            }
     };
 }
 

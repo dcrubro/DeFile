@@ -52,6 +52,23 @@ namespace DeFile::Blockchain::Crypto {
                 SHA256_Update(&ctx, data, len);
                 SHA256_Final(out, &ctx);
             }
+
+            static std::string bytesToHex(const unsigned char* data, size_t length) {
+                std::stringstream ss;
+                for (size_t i = 0; i < length; ++i) {
+                    ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+                }
+                return ss.str();
+            }
+        
+            static std::vector<unsigned char> hexToBytes(const std::string& hex) {
+                std::vector<unsigned char> bytes;
+                for (size_t i = 0; i < hex.length(); i += 2) {
+                    std::string byteString = hex.substr(i, 2);
+                    bytes.push_back(static_cast<unsigned char>(std::stoi(byteString, nullptr, 16)));
+                }
+                return bytes;
+            }
     };
 }
 

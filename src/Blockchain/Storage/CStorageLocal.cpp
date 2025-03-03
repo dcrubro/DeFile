@@ -156,7 +156,7 @@ namespace DeFile::Blockchain
                     
                     std::string txString(buffer.begin(), buffer.end());
 
-                    block->addTransaction(txString);
+                    block->addTransactionWithoutCheck(txString);
                 }
 
                 fclose(file);

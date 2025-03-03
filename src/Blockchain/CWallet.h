@@ -18,6 +18,8 @@
 #include <cstring>
 
 #include "CTransaction.h"
+#include "CChain.h"
+#include "CBlock.h"
 
 namespace DeFile::Blockchain {
     class CWallet {
@@ -33,12 +35,11 @@ namespace DeFile::Blockchain {
 
             void generateKeypair();
             void generateKeypairFromPriv(bool save = false);
-            std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen);
-            std::vector<std::string> splitTransactionData(const std::string& data);
-            std::string bytesToHex(const unsigned char* data, size_t length) const;
-            std::vector<unsigned char> hexToBytes(const std::string& hex) const;
+            static std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen);
+            static std::vector<std::string> splitTransactionData(const std::string& data);
+            static uint64_t getAddressBalance(const std::string &address, CChain *chain);
             std::string signTransaction(const CTransaction* tx);
-            bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey);
+            static bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain);
 
             bool checkWalletExistance();
             bool loadFromDisk();

@@ -141,16 +141,30 @@ namespace DeFile::Blockchain
         return mNonce;
     }
 
-    void CBlock::addTransactionWithSign(CTransaction* tx, CWallet* srcWallet) {
+    void CBlock::addTransactionWithSign(CTransaction* tx, CWallet* srcWallet, CChain *chain) {
         tx->calculateHash();
-        mTransactions.push_back(srcWallet->signTransaction(tx));
-        mLog.writeLine("Added transaction " + tx->getHashStr() + " to current block.");
+        std::string signedTx = srcWallet->signTransaction(tx);
+        if (srcWallet->verifyTransaction(signedTx, srcWallet->getPubKey(), chain)) {
+            mTransactions.push_back(signedTx);
+            mLog.writeLine("Added transaction " + tx->getHashStr() + " to current block.");
+            return;
+        }
+        mLog.writeLine("Could not verify transaction. Did not add.");
     }
     
-    void CBlock::addTransaction(std::string &signedTx) {
+    void CBlock::addTransaction(std::string &signedTx, unsigned char* pubKey, CChain *chain) {
         //std::cout << signedTx << "\n";
+        if (CWallet::verifyTransaction(signedTx, pubKey, chain)) {
+            mTransactions.push_back(signedTx);
+            mLog.writeLine("Added foreign transaction to current block.");
+            return;
+        }
+        mLog.writeLine("Could not verify transaction. Did not add.");
+    }
+
+    void CBlock::addTransactionWithoutCheck(std::string &signedTx) {
         mTransactions.push_back(signedTx);
-        mLog.writeLine("Added foreign transaction to current block.");
+        mLog.writeLine("Added foreign transaction to current block. Did not verify");
     }
 
     bool CBlock::hasHash()
@@ -253,9 +267,9 @@ namespace DeFile::Blockchain
         buf[SHA256_DIGEST_LENGTH * 2] = 0;
         std::cout << std::string(buf) << "\n";*/
 
-        for (int i = 0; i < mTransactions.size(); i++) {
+        /*for (int i = 0; i < mTransactions.size(); i++) {
             std::cout << mTransactions[i] << "\n";
-        }
+        }*/
 
         return memcmp(mHash, hash, SHA256_DIGEST_LENGTH) == 0;
     }

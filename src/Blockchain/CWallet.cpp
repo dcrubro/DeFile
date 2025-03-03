@@ -75,7 +75,7 @@ namespace DeFile::Blockchain {
         SHA256(mPubKey, mPubKeyLen, hash);
 
         //Convert to address
-        mWalletAddress = "df1a" + bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
+        mWalletAddress = "df1a" + Crypto::CryptoUtils::bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
 
         std::cout << "CWallet: Keypair generated successfully." << std::endl;
 
@@ -123,7 +123,7 @@ namespace DeFile::Blockchain {
         SHA256(mPubKey, mPubKeyLen, hash);
 
         //Convert to address
-        mWalletAddress = "df1a" + bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
+        mWalletAddress = "df1a" + Crypto::CryptoUtils::bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
 
         std::cout << "CWallet: Keypair generated successfully." << std::endl;
 
@@ -132,23 +132,6 @@ namespace DeFile::Blockchain {
 
         if (save)
             this->saveToDisk();
-    }
-
-    std::string CWallet::bytesToHex(const unsigned char* data, size_t length) const {
-        std::stringstream ss;
-        for (size_t i = 0; i < length; ++i) {
-            ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
-        }
-        return ss.str();
-    }
-
-    std::vector<unsigned char> CWallet::hexToBytes(const std::string& hex) const {
-        std::vector<unsigned char> bytes;
-        for (size_t i = 0; i < hex.length(); i += 2) {
-            std::string byteString = hex.substr(i, 2);
-            bytes.push_back(static_cast<unsigned char>(std::stoi(byteString, nullptr, 16)));
-        }
-        return bytes;
     }
 
     std::string CWallet::getPubKeyStr() const {
@@ -160,7 +143,7 @@ namespace DeFile::Blockchain {
         return std::string(reinterpret_cast<char const*>(mPrivKey));
     }
 
-    std::string CWallet::pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen) {
+    std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen) {
         if (pubKeyLen != 33 && pubKeyLen != 65) {
             throw std::invalid_argument("Invalid public key length! Expected 33 (compressed) or 65 (uncompressed) bytes.");
         }
@@ -170,12 +153,12 @@ namespace DeFile::Blockchain {
         SHA256(pubKey, pubKeyLen, hash);
 
         // Convert the hash to hex and create the wallet address
-        std::string walletAddress = "df1a" + bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
+        std::string walletAddress = "df1a" + Crypto::CryptoUtils::bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
 
         return walletAddress;
     }
 
-    std::vector<std::string> CWallet::splitTransactionData(const std::string& data) {
+    std::vector<std::string> splitTransactionData(const std::string& data) {
         std::vector<std::string> components;
         std::stringstream ss(data);
         std::string item;
@@ -185,6 +168,48 @@ namespace DeFile::Blockchain {
         }
 
         return components;
+    }
+
+    uint64_t getAddressBalance(const std::string &address, CChain *chain) {
+        if (!address.c_str()) {
+            std::cerr << "CWallet: Address is null\n";
+            return 0;
+        }
+        
+        if (!chain) {
+            std::cerr << "CWallet: Chain reference pointer not provided\n";
+            return 0;
+        }
+
+        //Find the latest block with a reference to the address (reference to the tx timestamp)
+        CBlock *cur = chain->getCurrentBlock();
+        while (cur) {
+            //Get the transaction list
+            std::vector<std::string> txs = cur->getTransactions();
+            
+            for (const std::string &tx : txs) {
+                std::string data = CTransaction::decodeTransaction(tx);
+                //Read the src and dest address and look for a match
+                std::vector<std::string> components = splitTransactionData(data);
+                if (components[0] == "1") { //Handle TX Version 1
+                    //NOTE: If a wallet sends to itself, then the srcNewBalance will equal the destNewBalance. This means that it doesn't really matter which
+                    //one we check in that edge case.
+
+                    if (components[1] == address) { //Handle being sender
+                        return std::stoull(components[4]); //Arg 4 is srcNewBalance
+                    }
+
+                    if (components[2] == address) { //Handle being receiver
+                        return std::stoull(components[5]); //Arg 4 is destNewBalance
+                    }
+                }
+            }
+
+
+            cur = cur->getPrevBlock();
+        }
+
+        return 0; //No data found, set balance to 0.
     }
 
     std::string CWallet::signTransaction(const CTransaction* tx) {
@@ -219,10 +244,10 @@ namespace DeFile::Blockchain {
         std::vector<unsigned char> signedData(transactionData.begin(), transactionData.end());
         signedData.insert(signedData.end(), serializedSig, serializedSig + 64);
 
-        return bytesToHex(signedData.data(), signedData.size());
+        return Crypto::CryptoUtils::bytesToHex(signedData.data(), signedData.size());
     }
 
-    bool CWallet::verifyTransaction(const std::string& sigHex, const unsigned char* pubKey) {
+    bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain) {
         if (sigHex.empty()) {
             std::cerr << "CWallet: Signature Hex is null\n";
             return false;
@@ -233,9 +258,14 @@ namespace DeFile::Blockchain {
             return false;
         }
 
+        if (!chain) {
+            std::cerr << "CWallet: Chain reference not provided\n";
+            return false;
+        }
+
         secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
 
-        std::vector<unsigned char> signedData = hexToBytes(sigHex);
+        std::vector<unsigned char> signedData = Crypto::CryptoUtils::hexToBytes(sigHex);
 
         if (signedData.size() < 64) return false; // Signature size check
 
@@ -254,7 +284,7 @@ namespace DeFile::Blockchain {
 
         //Load the public key
         secp256k1_pubkey pubKeyStruct;
-        if (!secp256k1_ec_pubkey_parse(ctx, &pubKeyStruct, pubKey, mPubKeyLen)) {
+        if (!secp256k1_ec_pubkey_parse(ctx, &pubKeyStruct, pubKey, sizeof(pubKey))) {
             return false;
         }
 
@@ -263,9 +293,16 @@ namespace DeFile::Blockchain {
 
         //Split the data and generate the wallet address from the public key to verify source wallet
         std::vector<std::string> components = splitTransactionData(extractedMessage);
-        bool walletMatches = (components[0] == "1" && components[1] == pubKeyToWalletAddress(pubKey, 33)); //First arg is always TX version, for version 1 transactions, second arg is source address, assume 33 for pubKey size (TODO fix later)
+        std::string sourceWalletAddress = pubKeyToWalletAddress(pubKey, 33);
+        bool walletMatches = (components[0] == "1" && components[1] == sourceWalletAddress); //First arg is always TX version, for version 1 transactions, second arg is source address, assume 33 for pubKey size (TODO fix later)
 
-        return sigMatches && walletMatches;
+        //Ensure that the sender actually has enough balance to send the transaction. We can do this by finding the last block with the mentioned address, 
+        //and reading its balance.
+        uint64_t senderBalance = getAddressBalance(sourceWalletAddress, chain);
+        uint64_t sendAmount = std::stoull(components[4]);
+        uint64_t newBalCalc = senderBalance - sendAmount;
+
+        return sigMatches && walletMatches && (newBalCalc >= 0);
     }
 
     bool CWallet::checkWalletExistance() {
@@ -309,7 +346,7 @@ namespace DeFile::Blockchain {
         mPrivKey = new unsigned char[32];
         memcpy(mPrivKey, privKeyBuffer, 32);
 
-        std::cout << "Loaded Private Key: " << bytesToHex(mPrivKey, 32) << "\n";
+        std::cout << "Loaded Private Key: " << Crypto::CryptoUtils::bytesToHex(mPrivKey, 32) << "\n";
 
         generateKeypairFromPriv(false); // Regenerate public key from loaded private key
 
@@ -328,7 +365,7 @@ namespace DeFile::Blockchain {
         fwrite(mPrivKey, sizeof(char), len, file);
         fclose(file);
 
-        std::cout << "Saved Private Key: " << bytesToHex(mPrivKey, 32) << "\n";
+        std::cout << "Saved Private Key: " << Crypto::CryptoUtils::bytesToHex(mPrivKey, 32) << "\n";
 
         return true;
     }

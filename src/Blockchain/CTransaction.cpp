@@ -8,7 +8,7 @@ namespace DeFile::Blockchain {
     void CTransaction::calculateHash(uint8_t* ret)
     {
         //source + destination address, transfered amount, timestamp
-        uint32_t sz = sizeof(uint8_t) + (sizeof(char) * mSourceAddress.size()) + (sizeof(char) * mDestinationAddress.size()) + sizeof(uint64_t) + sizeof(uint64_t);
+        uint32_t sz = sizeof(uint8_t) + (sizeof(char) * mSourceAddress.size()) + (sizeof(char) * mDestinationAddress.size()) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
         mTxSize = sz;
 
         uint8_t* buf = new uint8_t[sz];
@@ -21,6 +21,10 @@ namespace DeFile::Blockchain {
         memcpy(ptr, mDestinationAddress.c_str(), sizeof(char) * mDestinationAddress.size());
         ptr += sizeof(char) * mDestinationAddress.size();
         memcpy(ptr, &mTransferedAmount, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
+        memcpy(ptr, &mSourceNewBalance, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
+        memcpy(ptr, &mDestinationAddress, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
         memcpy(ptr, &mTimestamp, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
