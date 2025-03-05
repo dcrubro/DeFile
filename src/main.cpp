@@ -3,6 +3,7 @@
 #include "Blockchain/CBlock.h"
 #include "Blockchain/Storage/CStorageLocal.h"
 #include "Blockchain/CWallet.h"
+#include "Blockchain/Constants/CConstants.h"
 #include <iostream>
 #include <ctime>
 #include <unistd.h>
@@ -154,17 +155,18 @@ int main(int argc, char **argv)
 
     if (isNewChain)
     {
+        //Temporary junk unverified tx to give ourselves some balance from system mint
         CTransaction testTx(
             1, //Version
-            wallet.getWalletAddress(), //SRC
-            "df1ac964bfc4d4f201a7dc221a080b6364ec30052d33478f4cfd02", //DEST
-            1,  //Amount
+            Constants::CConstants::MINT_WALLET, //SRC
+            wallet.getWalletAddress(), //DEST
+            1000,  //Amount
             0,  //SrcNew
-            1   //DestNew
+            1000   //DestNew
         );
 
-        std::string signedTx = wallet.signTransaction(&testTx);
-        std::cout << signedTx << "\n";
+        std::string signedTx = wallet.signTransaction(&testTx); //This is a junk signature, we'll accept it temporarily
+        //std::cout << signedTx << "\n";
         /*uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;
@@ -172,6 +174,8 @@ int main(int argc, char **argv)
         cout << "Garbage generated.\n";*/
 
         //chain.appendToCurrentBlock(garbage, 32);
+
+        //
         chain.appendTxToCurrentBlock(signedTx);
         //delete[] garbage;
 
@@ -184,6 +188,7 @@ int main(int argc, char **argv)
         cout << "Current Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
 
         int blocksNumToGen = 12;
+        uint64_t balanceCounter = 1000;
 
         for (int i = 0; i < blocksNumToGen; i++) {
             /*garbage = new uint8_t[32];
@@ -193,7 +198,27 @@ int main(int argc, char **argv)
             cout << "Garbage generated.\n";
 
             chain.appendToCurrentBlock(garbage, 32);*/
-            chain.appendTxToCurrentBlock(signedTx);
+
+            //Verified transaction to system
+            CTransaction tx(
+                1, //Version
+                wallet.getWalletAddress(), //SRC
+                Constants::CConstants::SYSTEM_WALLET, //DEST
+                1,  //Amount
+                balanceCounter - 1,  //SrcNew
+                1000 - balanceCounter + 1   //DestNew
+            );
+
+            std::string sTx = wallet.signTransaction(&tx);
+            //std::cout << sTx << "\n\n";
+            bool isVerified = CWallet::verifyTransaction(sTx, wallet.getPubKey(), &chain);
+
+            if (isVerified) {
+                chain.appendTxToCurrentBlock(sTx);
+                balanceCounter--;
+            }
+            else
+                std::cout << "Couldn't verify transaction. Skipping.\n";
             //delete[] garbage;
 
             cout << "Garbage appended to current block.\n";
@@ -204,6 +229,36 @@ int main(int argc, char **argv)
 
             cout << "Previous Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
         }
+
+        //Send a junk tx with more money than the address has
+        CTransaction tx(
+            1, //Version
+            wallet.getWalletAddress(), //SRC
+            Constants::CConstants::SYSTEM_WALLET, //DEST
+            999999999,  //Amount
+            0,  //SrcNew
+            999999999   //DestNew
+        );
+
+        std::string sTx = wallet.signTransaction(&tx);
+        std::cout << sTx << "\n\n";
+        bool isVerified = CWallet::verifyTransaction(sTx, wallet.getPubKey(), &chain);
+        std::cout << isVerified << "\n\n";
+        if (isVerified) {
+            chain.appendTxToCurrentBlock(sTx);
+            balanceCounter--;
+        }
+        else
+            std::cout << "Couldn't verify transaction. Skipping.\n";
+        //delete[] garbage;
+
+        cout << "Garbage appended to current block.\n";
+
+        chain.nextBlock();
+
+        cout << "Next block mined.\n";
+
+        cout << "Previous Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
     }
     else
     {

@@ -18,10 +18,11 @@
 #include <cstring>
 
 #include "CTransaction.h"
-#include "CChain.h"
-#include "CBlock.h"
 
 namespace DeFile::Blockchain {
+    class CChain; //Forward declare
+    class CBlock;
+
     class CWallet {
         private:
             unsigned char* mPubKey;
@@ -38,6 +39,8 @@ namespace DeFile::Blockchain {
             static std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen);
             static std::vector<std::string> splitTransactionData(const std::string& data);
             static uint64_t getAddressBalance(const std::string &address, CChain *chain);
+
+            //Signing function for transactions. Note that this will sign any transaction, even if it's not yours (it will be rejected later however, due to a bad signature).
             std::string signTransaction(const CTransaction* tx);
             static bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain);
 

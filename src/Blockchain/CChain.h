@@ -2,7 +2,6 @@
 
 #ifndef __C_CHAIN_INCLUDED__
 #define __C_CHAIN_INCLUDED__
-#include "CBlock.h"
 #include "Storage/EStorageType.h"
 #include "Storage/IStorage.h"
 #include "Net/CServer.h"
@@ -10,9 +9,11 @@
 #include "CLog.h"
 #include <vector>
 #include "CTransaction.h"
+#include "CBlock.h"
 
 namespace DeFile::Blockchain
 {
+    class CWallet;
 
     class CChain
     {

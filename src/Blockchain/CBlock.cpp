@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "CWallet.h"
 
 namespace DeFile::Blockchain
 {
@@ -140,19 +141,8 @@ namespace DeFile::Blockchain
     {
         return mNonce;
     }
-
-    void CBlock::addTransactionWithSign(CTransaction* tx, CWallet* srcWallet, CChain *chain) {
-        tx->calculateHash();
-        std::string signedTx = srcWallet->signTransaction(tx);
-        if (srcWallet->verifyTransaction(signedTx, srcWallet->getPubKey(), chain)) {
-            mTransactions.push_back(signedTx);
-            mLog.writeLine("Added transaction " + tx->getHashStr() + " to current block.");
-            return;
-        }
-        mLog.writeLine("Could not verify transaction. Did not add.");
-    }
     
-    void CBlock::addTransaction(std::string &signedTx, unsigned char* pubKey, CChain *chain) {
+    /*void CBlock::addTransaction(std::string &signedTx, unsigned char* pubKey, CChain* chain) {
         //std::cout << signedTx << "\n";
         if (CWallet::verifyTransaction(signedTx, pubKey, chain)) {
             mTransactions.push_back(signedTx);
@@ -160,11 +150,11 @@ namespace DeFile::Blockchain
             return;
         }
         mLog.writeLine("Could not verify transaction. Did not add.");
-    }
+    }*/
 
-    void CBlock::addTransactionWithoutCheck(std::string &signedTx) {
+    void CBlock::addTransaction(std::string &signedTx) {
         mTransactions.push_back(signedTx);
-        mLog.writeLine("Added foreign transaction to current block. Did not verify");
+        mLog.writeLine("Added foreign transaction to current block.");
     }
 
     bool CBlock::hasHash()

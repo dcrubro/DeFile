@@ -15,7 +15,35 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Include all source files in the src/ directory
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+#file(GLOB_RECURSE SOURCES "src/*.cpp")
+
+#add_library(${PROJECT_NAME}LIB STATIC 
+#    src/Blockchain/CLog.cpp
+#    src/Blockchain/CTransaction.cpp
+#    src/Blockchain/CWallet.cpp
+#    src/Blockchain/CBlock.cpp
+#    src/Blockchain/Storage/Storage.cpp
+#    src/Blockchain/Storage/CStorageLocal.cpp
+#    src/Blockchain/Net/INet.cpp
+#    src/Blockchain/Net/CClient.cpp
+#    src/Blockchain/Net/CServer.cpp
+#    src/Blockchain/CChain.cpp
+#    src/main.cpp
+#)
+
+set(SOURCES
+    src/Blockchain/CLog.cpp
+    src/Blockchain/CTransaction.cpp
+    src/Blockchain/CWallet.cpp
+    src/Blockchain/CBlock.cpp
+    src/Blockchain/Storage/Storage.cpp
+    src/Blockchain/Storage/CStorageLocal.cpp
+    src/Blockchain/Net/INet.cpp
+    src/Blockchain/Net/CClient.cpp
+    src/Blockchain/Net/CServer.cpp
+    src/Blockchain/CChain.cpp
+    src/main.cpp
+)
 
 # Add the executable by specifying all source files
 add_executable(${PROJECT_NAME} ${SOURCES})

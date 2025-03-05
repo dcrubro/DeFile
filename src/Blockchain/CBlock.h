@@ -12,10 +12,11 @@
 #include <chrono>
 
 #include "CTimeUtils.h"
-#include "CWallet.h"
 
 namespace DeFile::Blockchain
 {
+    class CWallet;
+
     class CBlock
     {
     private:
@@ -44,9 +45,9 @@ namespace DeFile::Blockchain
         void mine(int difficulty);                      // Mine the block 
         uint32_t getNonce();                            // Gets the nonce value
 
-        void addTransactionWithSign(CTransaction* tx, CWallet* srcWallet, CChain *chain); //Adds a transaction to the block (auto-signed).
-        void addTransaction(std::string &signedTx, unsigned char* pubKey, CChain *chain); //Adds a foreign transaction to the block (needs to be pre-signed). It also assumes that it's valid - make sure to confirm somewhere else.
-        void addTransactionWithoutCheck(std::string &signedTx);
+        //Adds a foreign transaction to the block (needs to be pre-signed). It also assumes that it's valid - make sure to confirm somewhere else.
+        //void addTransaction(std::string &signedTx, unsigned char* pubKey, CChain* chain);
+        void addTransaction(std::string &signedTx);
 
         bool hasHash();                                     //
         bool hasPrevHash();                                     //

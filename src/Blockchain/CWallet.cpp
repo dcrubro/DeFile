@@ -2,6 +2,8 @@
 
 #include "CWallet.h"
 #include "Crypto/CCryptoUtils.h"
+#include "CChain.h"
+#include "CBlock.h"
 
 namespace DeFile::Blockchain {
     CWallet::CWallet(bool generateNew) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0) {
@@ -143,7 +145,7 @@ namespace DeFile::Blockchain {
         return std::string(reinterpret_cast<char const*>(mPrivKey));
     }
 
-    std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen) {
+    std::string CWallet::pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen) {
         if (pubKeyLen != 33 && pubKeyLen != 65) {
             throw std::invalid_argument("Invalid public key length! Expected 33 (compressed) or 65 (uncompressed) bytes.");
         }
@@ -158,7 +160,7 @@ namespace DeFile::Blockchain {
         return walletAddress;
     }
 
-    std::vector<std::string> splitTransactionData(const std::string& data) {
+    std::vector<std::string> CWallet::splitTransactionData(const std::string& data) {
         std::vector<std::string> components;
         std::stringstream ss(data);
         std::string item;
@@ -170,7 +172,7 @@ namespace DeFile::Blockchain {
         return components;
     }
 
-    uint64_t getAddressBalance(const std::string &address, CChain *chain) {
+    uint64_t CWallet::getAddressBalance(const std::string &address, CChain *chain) {
         if (!address.c_str()) {
             std::cerr << "CWallet: Address is null\n";
             return 0;
@@ -189,6 +191,7 @@ namespace DeFile::Blockchain {
             
             for (const std::string &tx : txs) {
                 std::string data = CTransaction::decodeTransaction(tx);
+                std::cout << data << "\n";
                 //Read the src and dest address and look for a match
                 std::vector<std::string> components = splitTransactionData(data);
                 if (components[0] == "1") { //Handle TX Version 1
@@ -247,7 +250,7 @@ namespace DeFile::Blockchain {
         return Crypto::CryptoUtils::bytesToHex(signedData.data(), signedData.size());
     }
 
-    bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain) {
+    bool CWallet::verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain) {
         if (sigHex.empty()) {
             std::cerr << "CWallet: Signature Hex is null\n";
             return false;
@@ -284,7 +287,7 @@ namespace DeFile::Blockchain {
 
         //Load the public key
         secp256k1_pubkey pubKeyStruct;
-        if (!secp256k1_ec_pubkey_parse(ctx, &pubKeyStruct, pubKey, sizeof(pubKey))) {
+        if (!secp256k1_ec_pubkey_parse(ctx, &pubKeyStruct, pubKey, 33)) {
             return false;
         }
 
@@ -299,10 +302,15 @@ namespace DeFile::Blockchain {
         //Ensure that the sender actually has enough balance to send the transaction. We can do this by finding the last block with the mentioned address, 
         //and reading its balance.
         uint64_t senderBalance = getAddressBalance(sourceWalletAddress, chain);
-        uint64_t sendAmount = std::stoull(components[4]);
-        uint64_t newBalCalc = senderBalance - sendAmount;
+        uint64_t sendAmount = std::stoull(components[3]);
+        bool hasFunds = false;
+        uint64_t newBalCalc = 0;
+        if (senderBalance >= sendAmount) {
+            newBalCalc = senderBalance - sendAmount;
+            hasFunds = true;
+        }
 
-        return sigMatches && walletMatches && (newBalCalc >= 0);
+        return sigMatches && walletMatches && hasFunds;
     }
 
     bool CWallet::checkWalletExistance() {

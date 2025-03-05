@@ -46,7 +46,14 @@ namespace DeFile::Blockchain {
                 buf[SHA256_DIGEST_LENGTH * 2] = 0;
 
                 std::stringstream ss;
-                ss << std::to_string(mVersion) << "," << mSourceAddress << "," << mDestinationAddress << "," << std::to_string(mTransferedAmount) << "," << std::to_string(mSourceNewBalance) << "," << std::to_string(mDestinationNewBalance) << "," << std::to_string(mTimestamp) << "," << std::string(buf);
+                ss << std::to_string(mVersion) 
+                    << "," << mSourceAddress 
+                    << "," << mDestinationAddress 
+                    << "," << std::to_string(mTransferedAmount) 
+                    << "," << std::to_string(mSourceNewBalance) 
+                    << "," << std::to_string(mDestinationNewBalance) 
+                    << "," << std::to_string(mTimestamp) 
+                    << "," << std::string(buf);
                 return ss.str();
             }
 
