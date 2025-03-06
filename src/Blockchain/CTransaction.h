@@ -34,16 +34,7 @@ namespace DeFile::Blockchain {
 
             void calculateHash(uint8_t* ret = 0);                           // Calculates sha256 hash
             std::string serialize() const {
-                //Convert the hash to a string
-                char buf[SHA256_DIGEST_LENGTH * 2 + 1];
-                char* ptr = buf;
-                memset(buf, 0, SHA256_DIGEST_LENGTH);
-                for(uint32_t n = 0; n < SHA256_DIGEST_LENGTH; n++)
-                {
-                    sprintf(ptr, "%02x", mTxHash[n]);
-                    ptr += 2;
-                }
-                buf[SHA256_DIGEST_LENGTH * 2] = 0;
+                std::string hash = getHashStr();
 
                 std::stringstream ss;
                 ss << std::to_string(mVersion) 
@@ -53,7 +44,7 @@ namespace DeFile::Blockchain {
                     << "," << std::to_string(mSourceNewBalance) 
                     << "," << std::to_string(mDestinationNewBalance) 
                     << "," << std::to_string(mTimestamp) 
-                    << "," << std::string(buf);
+                    << "," << hash;
                 return ss.str();
             }
 
@@ -63,7 +54,7 @@ namespace DeFile::Blockchain {
             uint64_t getTransferedAmount() { return mTransferedAmount; }
             time_t getTimestamp() { return mTimestamp; }
             uint8_t* getHash();                                             // Gets current hash -> mHash
-            std::string getHashStr();                                       // Gets the string representation of mHash
+            std::string getHashStr() const;                                       // Gets the string representation of mHash
             uint16_t getTxSize();                                           // Returns the size of the transaction + other data. This should be called after the hashing process.
             uint16_t getTxSizeSerialized();                                 // Returns the size of the serialized transaction + other data. This should be called after the hashing process.
         

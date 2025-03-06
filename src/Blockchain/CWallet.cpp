@@ -173,6 +173,7 @@ namespace DeFile::Blockchain {
     }
 
     uint64_t CWallet::getAddressBalance(const std::string &address, CChain *chain) {
+        //TODO: Implement that transactions from the system mint wallet are permitted. However this should only be allowed on a mint cycle.
         if (!address.c_str()) {
             std::cerr << "CWallet: Address is null\n";
             return 0;

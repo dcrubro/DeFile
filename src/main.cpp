@@ -160,11 +160,11 @@ int main(int argc, char **argv)
             1, //Version
             Constants::CConstants::MINT_WALLET, //SRC
             wallet.getWalletAddress(), //DEST
-            1000,  //Amount
+            100000,  //Amount
             0,  //SrcNew
-            1000   //DestNew
+            100000   //DestNew
         );
-
+        testTx.calculateHash();
         std::string signedTx = wallet.signTransaction(&testTx); //This is a junk signature, we'll accept it temporarily
         //std::cout << signedTx << "\n";
         /*uint8_t *garbage = new uint8_t[32];
@@ -187,8 +187,8 @@ int main(int argc, char **argv)
 
         cout << "Current Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
 
-        int blocksNumToGen = 12;
-        uint64_t balanceCounter = 1000;
+        int blocksNumToGen = 128;
+        uint64_t balanceCounter = 100000;
 
         for (int i = 0; i < blocksNumToGen; i++) {
             /*garbage = new uint8_t[32];
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
                 balanceCounter - 1,  //SrcNew
                 1000 - balanceCounter + 1   //DestNew
             );
-
+            tx.calculateHash();
             std::string sTx = wallet.signTransaction(&tx);
             //std::cout << sTx << "\n\n";
             bool isVerified = CWallet::verifyTransaction(sTx, wallet.getPubKey(), &chain);
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
             0,  //SrcNew
             999999999   //DestNew
         );
-
+        tx.calculateHash();
         std::string sTx = wallet.signTransaction(&tx);
         std::cout << sTx << "\n\n";
         bool isVerified = CWallet::verifyTransaction(sTx, wallet.getPubKey(), &chain);

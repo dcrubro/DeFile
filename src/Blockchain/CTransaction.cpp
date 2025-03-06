@@ -24,7 +24,7 @@ namespace DeFile::Blockchain {
         ptr += sizeof(uint64_t);
         memcpy(ptr, &mSourceNewBalance, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
-        memcpy(ptr, &mDestinationAddress, sizeof(uint64_t));
+        memcpy(ptr, &mDestinationNewBalance, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
         memcpy(ptr, &mTimestamp, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
@@ -48,17 +48,12 @@ namespace DeFile::Blockchain {
     }
 
     // hex format of hash
-    std::string CTransaction::getHashStr()
-    {
-        char buf[SHA256_DIGEST_LENGTH * 2 + 1];
-        char* ptr = buf;
-        memset(buf, 0, SHA256_DIGEST_LENGTH);
-        for(uint32_t n = 0; n < SHA256_DIGEST_LENGTH; n++)
-        {
-            sprintf(ptr, "%02x", mTxHash[n]);
-            ptr += 2;
+    std::string CTransaction::getHashStr() const {
+        char buf[65]; // 32 bytes * 2 chars per byte + 1 null terminator
+        for (size_t i = 0; i < 32; i++) {
+            sprintf(&buf[i * 2], "%02x", mTxHash[i]);
         }
-        buf[SHA256_DIGEST_LENGTH * 2] = 0;
+        buf[64] = '\0'; // Null-terminate
         return std::string(buf);
     }
 
