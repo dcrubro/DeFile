@@ -7,35 +7,51 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/bio.h>
+#include <secp256k1.h>
+#include <secp256k1_recovery.h>
+#include <random>
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <sstream>
+#include <vector>
+#include <cstring>
 
 #include "CTransaction.h"
 
 namespace DeFile::Blockchain {
+    class CChain; //Forward declare
+    class CBlock;
+
     class CWallet {
         private:
             unsigned char* mPubKey;
-            RSA* mPrivKey;
+            //RSA* mPrivKey;
+            unsigned char* mPrivKey;
             std::string mWalletAddress;
             int mPubKeyLen;
-
-            uint16_t mBits;
         public:
-            CWallet(int bits);
+            CWallet(bool generateNew);
             ~CWallet();
 
-            void generateKeypair(int bits = 2048);
-            std::string bytesToHex(const unsigned char* data, size_t length) const;
-            std::string signTransaction(const CTransaction* tx);
-            bool verifyTransaction(const CTransaction* tx, const std::string& sig, const std::string& pubKeyPEM);
+            void generateKeypair();
+            void generateKeypairFromPriv(bool save = false);
+            static std::string pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen);
+            static std::vector<std::string> splitTransactionData(const std::string& data);
+            static uint64_t getAddressBalance(const std::string &address, CChain *chain);
 
+            //Signing function for transactions. Note that this will sign any transaction, even if it's not yours (it will be rejected later however, due to a bad signature).
+            std::string signTransaction(const CTransaction* tx);
+            static bool verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain);
+
+            bool checkWalletExistance();
             bool loadFromDisk();
             bool saveToDisk();
 
-            std::string getPubKey() const;
-            std::string getPrivKey() const;
+            unsigned char* getPubKey() const { return mPubKey; }
+            unsigned char* getPrivKey() const { return mPrivKey; }
+            std::string getPubKeyStr() const;
+            std::string getPrivKeyStr() const;
             std::string getWalletAddress() const { return mWalletAddress; }
             int getPubKeyLen() { return mPubKeyLen; }
     };

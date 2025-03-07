@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "CWallet.h"
 
 namespace DeFile::Blockchain
 {
@@ -18,7 +19,7 @@ namespace DeFile::Blockchain
             memcpy(mPrevHash, mPrevBlock->getHash(), SHA256_DIGEST_LENGTH);   // Copy previous block hash to current objects previous block hash
         else
             memset(mPrevHash, 0, SHA256_DIGEST_LENGTH); // mPrevHash to nulls
-        mCreatedTS = time(0); // Set creation timestamp
+        mCreatedTS = CTimeUtils::getUnixTimestampNS(); // Set creation timestamp
         mNonce = 0;
         mDataSize = 0;
         mData = 0;
@@ -33,15 +34,21 @@ namespace DeFile::Blockchain
 
     void CBlock::calculateHash(uint8_t* ret) {
         uint32_t szTxs = 0;
-        uint32_t sz = (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(time_t) + mDataSize + sizeof(uint32_t);
+        uint32_t sz = (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t) + mDataSize;
+
+        //Add the size of the transactions to actually allocate the correct size.
+        for (int i = 0; i < mTransactions.size(); i++) {
+            uint32_t szTx = mTransactions[i].size();
+            sz += szTx;
+        }
 
         uint8_t* buf = new uint8_t[sz];
         uint8_t* ptr = buf;         // ptr is just a cursor
 
         memcpy(ptr, mPrevHash, SHA256_DIGEST_LENGTH * sizeof(uint8_t));
         ptr += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-        memcpy(ptr, &mCreatedTS, sizeof(time_t));
-        ptr += sizeof(time_t);
+        memcpy(ptr, &mCreatedTS, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
         if(mDataSize != 0)
         {
             memcpy(ptr, mData, mDataSize);
@@ -50,31 +57,10 @@ namespace DeFile::Blockchain
         memcpy(ptr, &mNonce, sizeof(uint32_t));
         ptr += sizeof(uint32_t);
         for (int i = 0; i < mTransactions.size(); i++) {
-            uint32_t szTx = mTransactions[i]->getTxSize();
-            sz += szTx;
+            uint32_t szTx = mTransactions[i].size();
 
-            std::string source = mTransactions[i]->getSourceAddress();
-            memcpy(ptr, &source, sizeof(char) * mTransactions[i]->getSourceAddress().size());
-            ptr += sizeof(char) * mTransactions[i]->getSourceAddress().size();
-
-            std::string dest = mTransactions[i]->getSourceAddress();
-            memcpy(ptr, &dest, sizeof(char) * mTransactions[i]->getDestinationAddress().size());
-            ptr += sizeof(char) * mTransactions[i]->getDestinationAddress().size();
-
-            uint64_t amount = mTransactions[i]->getTransferedAmount();
-            memcpy(ptr, &amount, sizeof(uint64_t));
-            ptr += sizeof(uint64_t);
-
-            time_t time = mTransactions[i]->getTimestamp();
-            memcpy(ptr, &time, sizeof(time_t));
-            ptr += sizeof(time_t);
-
-            memcpy(ptr, mTransactions[i]->getHash(), SHA256_DIGEST_LENGTH * sizeof(uint8_t));
-            ptr += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-            //TODO: Continue here
-
-            delete &amount;
-            delete &time;
+            memcpy(ptr, mTransactions[i].c_str(), szTx);
+            ptr += szTx;
         }
 
         // libssl hashing
@@ -155,11 +141,20 @@ namespace DeFile::Blockchain
     {
         return mNonce;
     }
+    
+    /*void CBlock::addTransaction(std::string &signedTx, unsigned char* pubKey, CChain* chain) {
+        //std::cout << signedTx << "\n";
+        if (CWallet::verifyTransaction(signedTx, pubKey, chain)) {
+            mTransactions.push_back(signedTx);
+            mLog.writeLine("Added foreign transaction to current block.");
+            return;
+        }
+        mLog.writeLine("Could not verify transaction. Did not add.");
+    }*/
 
-    bool CBlock::addTransaction(CTransaction* tx) {
-        tx->calculateHash();
-        mTransactions.push_back(tx);
-        mLog.writeLine("Added transaction " + tx->getHashStr() + " to current block.");
+    void CBlock::addTransaction(std::string &signedTx) {
+        mTransactions.push_back(signedTx);
+        mLog.writeLine("Added foreign transaction to current block.");
     }
 
     bool CBlock::hasHash()
@@ -212,12 +207,12 @@ namespace DeFile::Blockchain
         setPrevHash(mPrevBlock->getHash());
     }
 
-    time_t CBlock::getCreatedTS()
+    uint64_t CBlock::getCreatedTS()
     {
         return mCreatedTS;
     }
 
-    void CBlock::setCreatedTS(time_t createdTS)
+    void CBlock::setCreatedTS(uint64_t createdTS)
     {
         mCreatedTS = createdTS;
     }
@@ -250,6 +245,22 @@ namespace DeFile::Blockchain
         uint8_t hash[SHA256_DIGEST_LENGTH];
         memset(hash, 0, SHA256_DIGEST_LENGTH);
         calculateHash(hash);
+
+        /*char buf[SHA256_DIGEST_LENGTH * 2 + 1];
+        char* ptr = buf;
+        memset(buf, 0, SHA256_DIGEST_LENGTH);
+        for(uint32_t n = 0; n < SHA256_DIGEST_LENGTH; n++)
+        {
+            sprintf(ptr, "%02x", mPrevHash[n]);
+            ptr += 2;
+        }
+        buf[SHA256_DIGEST_LENGTH * 2] = 0;
+        std::cout << std::string(buf) << "\n";*/
+
+        /*for (int i = 0; i < mTransactions.size(); i++) {
+            std::cout << mTransactions[i] << "\n";
+        }*/
+
         return memcmp(mHash, hash, SHA256_DIGEST_LENGTH) == 0;
     }
 }

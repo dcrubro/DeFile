@@ -7,6 +7,8 @@
 #include <openssl/sha.h>
 #include <ctime>
 #include <string.h>
+#include <vector>
+#include <string>
 
 namespace DeFile::Blockchain
 {
@@ -22,8 +24,10 @@ namespace DeFile::Blockchain
             bool mTrackDataAlloc;
             uint8_t mHash[SHA256_DIGEST_LENGTH];
             uint8_t mPrevHash[SHA256_DIGEST_LENGTH];
-            time_t mCreatedTS;
+            uint64_t mCreatedTS;
             uint32_t mNonce;
+
+            std::vector<std::string> mTransactions;
 
             CPacket()
             {
@@ -56,6 +60,7 @@ namespace DeFile::Blockchain
                 memset(mPrevHash, 0, SHA256_DIGEST_LENGTH);
                 mDataSize = 0;
                 mData = 0;
+                mTransactions.clear();
             }
 
             void setData(uint8_t* data, uint64_t dataSize, bool trackAlloc = false)

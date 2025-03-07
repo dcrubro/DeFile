@@ -1,190 +1,382 @@
 //Written by Jonas Korene Novak (aka. DcruBro), GPLv3 License
 
 #include "CWallet.h"
+#include "Crypto/CCryptoUtils.h"
+#include "CChain.h"
+#include "CBlock.h"
 
 namespace DeFile::Blockchain {
-    RSA* loadPublicKeyFromPEM(const std::string& pubkey_pem) {
-        BIO* bio = BIO_new_mem_buf(pubkey_pem.c_str(), -1);
-        if (!bio) {
-            std::cerr << "Error creating BIO" << std::endl;
-            return nullptr;
-        }
-    
-        RSA* rsa = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
-        BIO_free(bio);
-    
-        if (!rsa) {
-            std::cerr << "Error loading public key from PEM: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-        }
-    
-        return rsa;
-    }
+    CWallet::CWallet(bool generateNew) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0) {
+        std::cout << "CWallet Constructor: Initializing..." << std::endl;
 
-    CWallet::CWallet(int bits) : mPrivKey(nullptr), mPubKey(nullptr), mPubKeyLen(0), mBits(bits) {
-        generateKeypair(bits);
+        if (generateNew) {
+            generateKeypair();
+        } else {
+            std::cout << "CWallet: Checking wallet existence..." << std::endl;
+            if (checkWalletExistance()) {
+                if (!this->loadFromDisk()) {
+                    throw std::runtime_error("Failed to load wallet from disk.");
+                }
+            } else {
+                throw std::runtime_error("Wallet does not exist. Initialize with true.");
+            }
+        }
+
+        std::cout << "CWallet Constructor: Initialization complete." << std::endl;
     }
 
     CWallet::~CWallet() {
         if (mPrivKey) {
-            RSA_free(mPrivKey);
+            delete[] mPrivKey;
         }
+
         if (mPubKey) {
-            OPENSSL_free(mPubKey);
+            delete[] mPubKey;
         }
     }
 
-    void CWallet::generateKeypair(int bits) {
-        OpenSSL_add_all_algorithms();
-        ERR_load_BIO_strings();
-        ERR_load_crypto_strings();
+    void CWallet::generateKeypair() {
+        secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
 
-        // Generate RSA private key
-        mPrivKey = RSA_new();
-        BIGNUM* bn = BN_new();
-        BN_set_word(bn, RSA_F4);  // public exponent (65537)
+        //Generate a random 32-byte (256-bit) private key
+        unsigned char privateKey[32];
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<unsigned char> dist(0, 255);
 
-        if (RSA_generate_key_ex(mPrivKey, bits, bn, nullptr) != 1) {
-            std::cerr << "Error generating RSA key: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-            RSA_free(mPrivKey);
-            BN_free(bn);
+        do {
+            for (int i = 0; i < 32; ++i) {
+                privateKey[i] = dist(gen);
+            }
+        } while (!secp256k1_ec_seckey_verify(ctx, privateKey));
+
+        //Store the key
+        mPrivKey = new unsigned char[32];
+        memcpy(mPrivKey, privateKey, 32);
+
+        //Generate the public key
+        secp256k1_pubkey publicKey;
+        if (!secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey)) {
+            std::cerr << "CWallet: Error generating secp256k1 public key\n";
+            secp256k1_context_destroy(ctx);
             return;
         }
 
-        // Get the public key from the private key
-        mPubKeyLen = i2d_RSA_PUBKEY(mPrivKey, &mPubKey);
-        if (mPubKeyLen == -1) {
-            std::cerr << "Error getting public key: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-            RSA_free(mPrivKey);
-            BN_free(bn);
+        //Serialize (compress) the public key
+        unsigned char serializedPublicKey[33];
+        size_t publicKeyLen = sizeof(serializedPublicKey);
+        secp256k1_ec_pubkey_serialize(ctx, serializedPublicKey, &publicKeyLen, &publicKey, SECP256K1_EC_COMPRESSED);
+
+        //Store the public key
+        mPubKeyLen = publicKeyLen;
+        mPubKey = new unsigned char[mPubKeyLen];
+        memcpy(mPubKey, serializedPublicKey, mPubKeyLen);
+
+        //Hash the public key with SHA256
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256(mPubKey, mPubKeyLen, hash);
+
+        //Convert to address
+        mWalletAddress = "df1a" + Crypto::CryptoUtils::bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
+
+        std::cout << "CWallet: Keypair generated successfully." << std::endl;
+
+        //Clean up
+        secp256k1_context_destroy(ctx);
+
+        this->saveToDisk();
+    }
+
+    void CWallet::generateKeypairFromPriv(bool save) {
+        if (!mPrivKey) {
+            std::cerr << "CWallet: Private key is not set\n";
             return;
+        }
+
+        secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
+
+        //Validate the private key
+        if (!secp256k1_ec_seckey_verify(ctx, mPrivKey)) {
+            std::cerr << "CWallet: Invalid private key\n";
+            secp256k1_context_destroy(ctx);
+            return;
+        }
+
+        //Generate the public key
+        secp256k1_pubkey publicKey;
+        if (!secp256k1_ec_pubkey_create(ctx, &publicKey, mPrivKey)) {
+            std::cerr << "CWallet: Error generating secp256k1 public key\n";
+            secp256k1_context_destroy(ctx);
+            return;
+        }
+
+        //Serialize (compress) the public key
+        unsigned char serializedPublicKey[33];
+        size_t publicKeyLen = sizeof(serializedPublicKey);
+        secp256k1_ec_pubkey_serialize(ctx, serializedPublicKey, &publicKeyLen, &publicKey, SECP256K1_EC_COMPRESSED);
+
+        //Store the public key
+        mPubKeyLen = publicKeyLen;
+        mPubKey = new unsigned char[mPubKeyLen];
+        memcpy(mPubKey, serializedPublicKey, mPubKeyLen);
+
+        //Hash the public key with SHA256
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256(mPubKey, mPubKeyLen, hash);
+
+        //Convert to address
+        mWalletAddress = "df1a" + Crypto::CryptoUtils::bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
+
+        std::cout << "CWallet: Keypair generated successfully." << std::endl;
+
+        //Clean up
+        secp256k1_context_destroy(ctx);
+
+        if (save)
+            this->saveToDisk();
+    }
+
+    std::string CWallet::getPubKeyStr() const {
+        return std::string(reinterpret_cast<char const*>(mPubKey));
+    }
+
+    std::string CWallet::getPrivKeyStr() const {
+        //std::cout << std::string(reinterpret_cast<char const*>(mPrivKey)) << "\n";
+        return std::string(reinterpret_cast<char const*>(mPrivKey));
+    }
+
+    std::string CWallet::pubKeyToWalletAddress(const unsigned char* pubKey, size_t pubKeyLen) {
+        if (pubKeyLen != 33 && pubKeyLen != 65) {
+            throw std::invalid_argument("Invalid public key length! Expected 33 (compressed) or 65 (uncompressed) bytes.");
         }
 
         // Hash the public key using SHA-256
         unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256(mPubKey, mPubKeyLen, hash);
+        SHA256(pubKey, pubKeyLen, hash);
 
-        // Convert hash to a string and generate the wallet address
-        std::string hash_str = bytesToHex(hash, SHA256_DIGEST_LENGTH);
-        mWalletAddress = "df1a" + hash_str.substr(0, 50); // Prefix with "df1a"
+        // Convert the hash to hex and create the wallet address
+        std::string walletAddress = "df1a" + Crypto::CryptoUtils::bytesToHex(hash, SHA256_DIGEST_LENGTH).substr(0, 50);
 
-        // Clean up the big number used for RSA generation
-        BN_free(bn);
+        return walletAddress;
     }
 
-    std::string CWallet::bytesToHex(const unsigned char* data, size_t length) const {
-        std::stringstream ss;
-        for (size_t i = 0; i < length; ++i) {
-            ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+    std::vector<std::string> CWallet::splitTransactionData(const std::string& data) {
+        std::vector<std::string> components;
+        std::stringstream ss(data);
+        std::string item;
+
+        while (std::getline(ss, item, ',')) {
+            components.push_back(item);
         }
-        return ss.str();
+
+        return components;
     }
 
-    std::string CWallet::getPubKey() const {
-        BIO* bio = BIO_new(BIO_s_mem());
-        PEM_write_bio_RSA_PUBKEY(bio, mPrivKey);
+    uint64_t CWallet::getAddressBalance(const std::string &address, CChain *chain) {
+        //TODO: Implement that transactions from the system mint wallet are permitted. However this should only be allowed on a mint cycle.
+        if (!address.c_str()) {
+            std::cerr << "CWallet: Address is null\n";
+            return 0;
+        }
+        
+        if (!chain) {
+            std::cerr << "CWallet: Chain reference pointer not provided\n";
+            return 0;
+        }
 
-        char* pubKeyData = nullptr;
-        long pubKeyLen = BIO_get_mem_data(bio, &pubKeyData);
-        
-        std::string pubKey(pubKeyData, pubKeyLen);
-        
-        BIO_free(bio);
-        
-        return pubKey;
-    }
+        //Find the latest block with a reference to the address (reference to the tx timestamp)
+        CBlock *cur = chain->getCurrentBlock();
+        while (cur) {
+            //Get the transaction list
+            std::vector<std::string> txs = cur->getTransactions();
+            
+            for (const std::string &tx : txs) {
+                std::string data = CTransaction::decodeTransaction(tx);
+                std::cout << data << "\n";
+                //Read the src and dest address and look for a match
+                std::vector<std::string> components = splitTransactionData(data);
+                if (components[0] == "1") { //Handle TX Version 1
+                    //NOTE: If a wallet sends to itself, then the srcNewBalance will equal the destNewBalance. This means that it doesn't really matter which
+                    //one we check in that edge case.
 
-    std::string CWallet::getPrivKey() const {
-        BIO* bio = BIO_new(BIO_s_mem());
-        PEM_write_bio_RSAPrivateKey(bio, mPrivKey, nullptr, nullptr, 0, nullptr, nullptr);
-        
-        char* privKeyData = nullptr;
-        long privKeyLen = BIO_get_mem_data(bio, &privKeyData);
-        
-        std::string privKey(privKeyData, privKeyLen);
-        
-        BIO_free(bio);
-        
-        return privKey;
+                    if (components[1] == address) { //Handle being sender
+                        return std::stoull(components[4]); //Arg 4 is srcNewBalance
+                    }
+
+                    if (components[2] == address) { //Handle being receiver
+                        return std::stoull(components[5]); //Arg 4 is destNewBalance
+                    }
+                }
+            }
+
+
+            cur = cur->getPrevBlock();
+        }
+
+        return 0; //No data found, set balance to 0.
     }
 
     std::string CWallet::signTransaction(const CTransaction* tx) {
         if (!tx) {
-            std::cerr << "Transaction is null!" << std::endl;
+            std::cerr << "CWallet: Transaction is null\n";
             return "";
         }
-    
-        // Serialize the transaction data
+
+        if (!mPrivKey) {
+            std::cerr << "CWallet: Private key is not set\n";
+            return "";
+        }
+
+        secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
+
+        //Serialize the transaction data
         std::string transactionData = tx->serialize();
 
-        // Sign the hashed transaction data
-        unsigned char signature[RSA_size(mPrivKey)];
-        unsigned int signatureLen;
-    
-        if (RSA_sign(NID_sha256, (unsigned char*)transactionData.c_str(), transactionData.size(), signature, &signatureLen, mPrivKey) != 1) {
-            std::cerr << "Error signing transaction: " << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-            return "";
+        unsigned char hash[32];
+        Crypto::CryptoUtils::sha256(reinterpret_cast<const unsigned char*>(transactionData.c_str()), transactionData.size(), hash);
+
+        secp256k1_ecdsa_signature sig;
+        if (!secp256k1_ecdsa_sign(ctx, &sig, hash, mPrivKey, nullptr, nullptr)) {
+            throw std::runtime_error("CWallet: Failed to sign transaction");
         }
-    
-        // Convert the signature to hex format
-        return bytesToHex(signature, signatureLen);
+
+        //Serialize the signature
+        unsigned char serializedSig[64]; //64-byte compact sig
+        secp256k1_ecdsa_signature_serialize_compact(ctx, serializedSig, &sig);
+
+        //Concatenate message + sig;
+        std::vector<unsigned char> signedData(transactionData.begin(), transactionData.end());
+        signedData.insert(signedData.end(), serializedSig, serializedSig + 64);
+
+        return Crypto::CryptoUtils::bytesToHex(signedData.data(), signedData.size());
     }
 
-    bool CWallet::verifyTransaction(const CTransaction* tx, const std::string& sig, const std::string& pubKeyPEM) {
-        if (!tx) {
-            std::cerr << "Transaction is null!" << std::endl;
+    bool CWallet::verifyTransaction(const std::string& sigHex, const unsigned char* pubKey, CChain *chain) {
+        if (sigHex.empty()) {
+            std::cerr << "CWallet: Signature Hex is null\n";
             return false;
-        }
-    
-        // Serialize the transaction data
-        std::string transactionData = tx->serialize();
-    
-        // Convert the hex signature back to bytes
-        size_t sigLen = sig.size() / 2;
-        unsigned char* sigBytes = new unsigned char[sigLen];
-        for (size_t i = 0; i < sigLen; ++i) {
-            sscanf(sig.c_str() + 2 * i, "%02x", &sigBytes[i]);
         }
 
-        RSA* rsaPubKey = loadPublicKeyFromPEM(pubKeyPEM);
-        if (!rsaPubKey) {
-            delete[] sigBytes;
+        if (!pubKey) {
+            std::cerr << "CWallet: Public key is not set\n";
             return false;
-        } 
-    
-        // Verify the signature with the public key
-        int result = RSA_verify(NID_sha256, (unsigned char*)transactionData.c_str(), transactionData.size(), sigBytes, sigLen, rsaPubKey);
-    
-        delete[] sigBytes;
-        RSA_free(rsaPubKey);
-    
-        return result == 1;
+        }
+
+        if (!chain) {
+            std::cerr << "CWallet: Chain reference not provided\n";
+            return false;
+        }
+
+        secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+
+        std::vector<unsigned char> signedData = Crypto::CryptoUtils::hexToBytes(sigHex);
+
+        if (signedData.size() < 64) return false; // Signature size check
+
+        //Extract the original message
+        std::string extractedMessage = std::string(signedData.begin(), signedData.end() - 64);
+
+        //Hash the extracted message
+        unsigned char hash[32];
+        Crypto::CryptoUtils::sha256(reinterpret_cast<const unsigned char*>(extractedMessage.c_str()), extractedMessage.size(), hash);
+
+        //Extract the signature
+        secp256k1_ecdsa_signature sig;
+        if (!secp256k1_ecdsa_signature_parse_compact(ctx, &sig, signedData.data() + signedData.size() - 64)) {
+            return false;
+        }
+
+        //Load the public key
+        secp256k1_pubkey pubKeyStruct;
+        if (!secp256k1_ec_pubkey_parse(ctx, &pubKeyStruct, pubKey, 33)) {
+            return false;
+        }
+
+        //Verify the signature
+        bool sigMatches = secp256k1_ecdsa_verify(ctx, &sig, hash, &pubKeyStruct) == 1;
+
+        //Split the data and generate the wallet address from the public key to verify source wallet
+        std::vector<std::string> components = splitTransactionData(extractedMessage);
+        std::string sourceWalletAddress = pubKeyToWalletAddress(pubKey, 33);
+        bool walletMatches = (components[0] == "1" && components[1] == sourceWalletAddress); //First arg is always TX version, for version 1 transactions, second arg is source address, assume 33 for pubKey size (TODO fix later)
+
+        //Ensure that the sender actually has enough balance to send the transaction. We can do this by finding the last block with the mentioned address, 
+        //and reading its balance.
+        uint64_t senderBalance = getAddressBalance(sourceWalletAddress, chain);
+        uint64_t sendAmount = std::stoull(components[3]);
+        bool hasFunds = false;
+        uint64_t newBalCalc = 0;
+        if (senderBalance >= sendAmount) {
+            newBalCalc = senderBalance - sendAmount;
+            hasFunds = true;
+        }
+
+        return sigMatches && walletMatches && hasFunds;
+    }
+
+    bool CWallet::checkWalletExistance() {
+        std::string walletFn("data/wallet");
+        std::cout << "Made it to checking.";
+        //Some stupid code to check existance (basically it will return NULL if it doesn't exist).
+        FILE* file = fopen(walletFn.c_str(), "rb");
+        bool r = file != NULL;
+        fclose(file);
+        return r;
     }
 
     bool CWallet::loadFromDisk() {
-        std::string metaDataFn("data/wallet");
-        FILE* file = fopen(metaDataFn.c_str(), "rb");
-        if (file) {
-            size_t r = 0;
+        //TODO: Encrypt the private key before saving it - this is a security issue right now.
 
-            uint16_t bits = 0;
-            r = fread(&bits, sizeof(uint16_t), 1, file);
-            if (r != 1)
-                throw std::runtime_error("Could not read bit size.");
-            //TODO: Continue here
-
-            fclose(file);
+        std::string walletFn("data/wallet");
+        FILE* file = fopen(walletFn.c_str(), "rb");
+        if (!file) {
+            return false; // No wallet file found
         }
+
+        uint32_t len = 0;
+        size_t r = fread(&len, sizeof(uint32_t), 1, file);
+        if (r != 1 || len != 32) {  // Ensure length is correct
+            fclose(file);
+            throw std::runtime_error("Failed to read valid key length from wallet file.");
+        }
+
+        unsigned char privKeyBuffer[32];  // Fixed-size array (avoids heap allocation)
+        r = fread(privKeyBuffer, sizeof(char), len, file);
+        fclose(file);
+
+        if (r != len) {
+            throw std::runtime_error("Failed to read private key from wallet file.");
+        }
+
+        // Allocate and store private key
+        if (mPrivKey) {
+            delete[] mPrivKey;
+        }
+        mPrivKey = new unsigned char[32];
+        memcpy(mPrivKey, privKeyBuffer, 32);
+
+        std::cout << "Loaded Private Key: " << Crypto::CryptoUtils::bytesToHex(mPrivKey, 32) << "\n";
+
+        generateKeypairFromPriv(false); // Regenerate public key from loaded private key
+
+        return true;
     }
 
     bool CWallet::saveToDisk() {
-        std::string metaDataFn("data/wallet");
-        FILE* file = fopen(metaDataFn.c_str(), "wb");
-        if (file) {
-            fwrite(&mBits, sizeof(uint16_t), 1, file);
-            fwrite(&getPrivKey(), sizeof(char) * getPrivKey().size(), 1, file);
-            fwrite(&getPubKey(), sizeof(char) * getPubKey().size(), 1, file);
-            fwrite(&getWalletAddress(), sizeof(char) * getWalletAddress().size(), 1, file);
-            fclose(file);
+        std::string walletFn("data/wallet");
+        FILE* file = fopen(walletFn.c_str(), "wb");
+        if (!file) {
+            return false;
         }
+
+        uint32_t len = 32;  // Private key is always 32 bytes
+        fwrite(&len, sizeof(uint32_t), 1, file);
+        fwrite(mPrivKey, sizeof(char), len, file);
+        fclose(file);
+
+        std::cout << "Saved Private Key: " << Crypto::CryptoUtils::bytesToHex(mPrivKey, 32) << "\n";
+
+        return true;
     }
+
 }

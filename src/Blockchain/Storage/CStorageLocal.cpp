@@ -107,8 +107,8 @@ namespace DeFile::Blockchain
 
                 block->setPrevHash(prevHash);
 
-                time_t createdTS = 0;
-                r = fread(&createdTS, sizeof(time_t), 1, file);
+                uint64_t createdTS = 0;
+                r = fread(&createdTS, sizeof(uint64_t), 1, file);
                 if(r != 1)
                     throw std::runtime_error("Could not read createdTS.");
 
@@ -121,7 +121,7 @@ namespace DeFile::Blockchain
 
                 block->setNonce(nonce);
 
-                uint32_t dataSize = 0; 
+                /*uint32_t dataSize = 0; 
                 r = fread(&dataSize, sizeof(uint32_t), 1, file);
                 if(r != 1)
                     throw std::runtime_error("Could not read dataSize.");
@@ -136,7 +136,28 @@ namespace DeFile::Blockchain
                     ptr += r;
                 }
 
-                block->setAllocatedData(data, dataSize);
+                block->setAllocatedData(data, dataSize);*/
+
+                uint32_t txCount = 0;
+                r = fread(&txCount, sizeof(uint32_t), 1, file);
+                if(r != 1)
+                    throw std::runtime_error("Could not read transaction count.");
+                
+                for (uint32_t i = 0; i < txCount; i++) {
+                    uint16_t txSize = 0;
+                    r = fread(&txSize, sizeof(uint16_t), 1, file);
+                    if(r != 1)
+                        throw std::runtime_error("Could not read transaction size.");
+                    
+                    std::vector<char> buffer(txSize);
+                    r = fread(buffer.data(), sizeof(char), txSize, file);
+                    if(r != txSize)
+                        throw std::runtime_error("Could not read transaction data.");
+                    
+                    std::string txString(buffer.begin(), buffer.end());
+
+                    block->addTransaction(txString);
+                }
 
                 fclose(file);
             }
@@ -158,13 +179,23 @@ namespace DeFile::Blockchain
                 fwrite(&Version, sizeof(uint32_t), 1, file);
                 fwrite(block->getHash(), sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);
                 fwrite(block->getPrevHash(), sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);
-                time_t createdTS = block->getCreatedTS();
-                fwrite(&createdTS, sizeof(time_t), 1, file);
+                uint64_t createdTS = block->getCreatedTS();
+                fwrite(&createdTS, sizeof(uint64_t), 1, file);
                 uint32_t nonce = block->getNonce();
                 fwrite(&nonce, sizeof(uint32_t), 1, file);
-                uint32_t dataSize = block->getDataSize();
+                /*uint32_t dataSize = block->getDataSize();
                 fwrite(&dataSize, sizeof(uint32_t), 1, file);
-                fwrite(block->getData(), sizeof(uint8_t), dataSize, file);
+                fwrite(block->getData(), sizeof(uint8_t), dataSize, file);*/
+
+                std::vector<std::string> transactions = block->getTransactions();
+                uint32_t txCount = transactions.size();
+                fwrite(&txCount, sizeof(uint32_t), 1, file); //Write the TX count
+                for (uint32_t i = 0; i < transactions.size(); i++) {
+                    uint16_t txSize = transactions[i].size();
+                    fwrite(&txSize, sizeof(uint16_t), 1, file);
+                    fwrite(transactions[i].c_str(), sizeof(char), txSize, file);
+                }
+
                 fclose(file);
 
                 

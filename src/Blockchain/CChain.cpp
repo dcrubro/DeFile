@@ -3,6 +3,7 @@
 #include "CChain.h"
 #include "Net/CPacket.h"
 #include "Storage/Storage.h"
+#include "CWallet.h"
 #include <stdexcept>
 #include <unistd.h>
 
@@ -67,6 +68,14 @@ namespace DeFile::Blockchain
     void CChain::appendToCurrentBlock(uint8_t* data, uint32_t size)
     {
         mCurrentBlock->appendData(data, size);
+    }
+
+    /*void CChain::appendTxToCurrentBlockWithSign(CTransaction *tx, CWallet *srcWallet) {
+        mCurrentBlock->addTransactionWithSign(tx, srcWallet, this);
+    }*/
+
+    void CChain::appendTxToCurrentBlock(std::string &signedTx) {
+        mCurrentBlock->addTransaction(signedTx);
     }
 
     void CChain::nextBlock(bool save, bool distribute)
