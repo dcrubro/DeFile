@@ -20,7 +20,7 @@ namespace DeFile::Blockchain {
         ptr += sizeof(char) * mSourceAddress.size();
         memcpy(ptr, mDestinationAddress.c_str(), sizeof(char) * mDestinationAddress.size());
         ptr += sizeof(char) * mDestinationAddress.size();
-        memcpy(ptr, &mTransferedAmount, sizeof(uint64_t));
+        memcpy(ptr, &mTransferredAmount, sizeof(uint64_t));
         ptr += sizeof(uint64_t);
         memcpy(ptr, &mSourceNewBalance, sizeof(uint64_t));
         ptr += sizeof(uint64_t);

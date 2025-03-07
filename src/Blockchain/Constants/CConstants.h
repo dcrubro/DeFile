@@ -17,7 +17,7 @@ namespace DeFile::Blockchain::Constants {
             static constexpr const char* SYSTEM_WALLET = "dfsysfffffffffffffffffffffff00000000000000000000000000"; //System wallet which distributes fee rewards
             static constexpr const char* MINT_WALLET = "dfmintffffffffffffffffffffff00000000000000000000000000"; //System wallet which mints new tokens. This is the only wallet on the network which can send infinite tokens.
             static constexpr uint64_t CYCLE_TIME_NANOS = 604800000000000;
-            static constexpr uint8_t DECIMALS = 12; //Currency decimal count. Effective transfer is mTransferedAmount / decimals.
+            static constexpr uint8_t DECIMALS = 9; //Currency decimal count. Effective transfer is mTransferedAmount / 10^decimals.
     };
 }
 

@@ -15,14 +15,12 @@ using namespace DeFile::Blockchain;
 
 CChain *gChain;
 
-void interruptCallback(int sig)
-{
+void interruptCallback(int sig) {
     cout << "\n";
     gChain->stop();
 }
 
-bool tobool(std::string str)
-{
+bool tobool(std::string str) {
     for (int n = 0; n < str.size(); n++)
         str[n] = std::tolower(str[n]);
 
@@ -191,14 +189,6 @@ int main(int argc, char **argv)
         uint64_t balanceCounter = 100000;
 
         for (int i = 0; i < blocksNumToGen; i++) {
-            /*garbage = new uint8_t[32];
-            for (uint32_t n = 0; n < 32; n++)
-                garbage[n] = clock() % 255;
-
-            cout << "Garbage generated.\n";
-
-            chain.appendToCurrentBlock(garbage, 32);*/
-
             //Verified transaction to system
             CTransaction tx(
                 1, //Version
@@ -259,9 +249,7 @@ int main(int argc, char **argv)
         cout << "Next block mined.\n";
 
         cout << "Previous Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
-    }
-    else
-    {
+    } else {
         /*uint8_t* garbage = new uint8_t[32];
         for(uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;
