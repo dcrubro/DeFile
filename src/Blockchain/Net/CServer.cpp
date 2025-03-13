@@ -275,8 +275,8 @@ namespace DeFile::Blockchain
                     do
                     {
                         respPacket.mMessageType = EMT_WRITE_BLOCK;
-                        respPacket.mData = block->getData();
-                        respPacket.mDataSize = block->getDataSize();
+                        respPacket.mData = block->getStaticData();
+                        respPacket.mDataSize = block->getStaticDataSize();
                         respPacket.mCreatedTS = block->getCreatedTS();
                         respPacket.mNonce = block->getNonce();
                         memcpy(respPacket.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
@@ -305,7 +305,7 @@ namespace DeFile::Blockchain
                 else if(memcmp(packet->mPrevHash,PCHAIN->getCurrentBlock()->getHash(),SHA256_DIGEST_LENGTH) != 0)
                 {
                     mLog.writeLine("Data size: " + std::to_string(packet->mDataSize));
-                    PCHAIN->appendToCurrentBlock(packet->mData, packet->mDataSize);
+                    PCHAIN->appendStaticDataToCurrentBlock(packet->mData, packet->mDataSize);
                     PCHAIN->nextBlock();
                     packet->destroyData();
                     CPacket respPacket;

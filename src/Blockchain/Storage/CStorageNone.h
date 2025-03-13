@@ -18,6 +18,9 @@ namespace DeFile::Blockchain
             virtual void load(CBlock* block) {}
             virtual void save(CBlock* block, uint64_t blockCount, bool checkExistance) {}
 
+            virtual void loadBlockDynamicData(CBlock* block) {}
+            virtual void saveBlockDynamicData(CBlock* block, bool overwrite, bool freeAfter) {}
+
             virtual void dispose() { delete this; }
         };
     }

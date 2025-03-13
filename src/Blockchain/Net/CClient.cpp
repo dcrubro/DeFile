@@ -202,7 +202,7 @@ namespace DeFile::Blockchain
 
                         nextBlock = block;
 
-                        mLog.writeLine("Copied block: " + block->getHashStr() + " Size: " + std::to_string(block->getDataSize()));
+                        mLog.writeLine("Copied block: " + block->getHashStr() + " Size: " + std::to_string(block->getStaticDataSize()));
                         gotPacket.destroyData();
                         gotPacket = recvPacket();
                     }
@@ -265,8 +265,8 @@ namespace DeFile::Blockchain
         {
             CPacket packet;
             packet.mMessageType = EMT_WRITE_BLOCK;
-            packet.mData = block->getData();
-            packet.mDataSize = block->getDataSize();
+            packet.mData = block->getStaticData();
+            packet.mDataSize = block->getStaticDataSize();
             //packet.mCreatedTS = block->getCreatedTS();
             memcpy(packet.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
             memcpy(packet.mPrevHash, block->getPrevHash(), SHA256_DIGEST_LENGTH);

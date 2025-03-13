@@ -15,8 +15,7 @@ namespace DeFile::Blockchain
 {
     class CWallet;
 
-    class CChain
-    {
+    class CChain {
     private:
         std::vector<CBlock*> mChain; // List of blocks
         CBlock* mCurrentBlock;      // Pointer to the current block &mChain.last()
@@ -34,9 +33,11 @@ namespace DeFile::Blockchain
         CChain(const std::string& hostname, uint32_t hostPort = 9393, int difficulty = 0, Storage::E_STORAGE_TYPE storageType = Storage::EST_NONE);
         CChain(const std::string& hostname, uint32_t hostPort = 9393, bool newChain = false, const std::string& connectToNode = std::string(), int difficulty = 0, Storage::E_STORAGE_TYPE storageType = Storage::EST_NONE, uint32_t connectPort = 9393);     //
         ~CChain();                                                                          //
-        void appendToCurrentBlock(uint8_t* data, uint32_t size);
-        void appendTxToCurrentBlockWithSign(CTransaction *tx, CWallet *srcWallet); //Add transaction to current block. This method auto-signes the transaction.
-        void appendTxToCurrentBlock(std::string &signedTx); //Add a foreign transaction to current block. Needs to be pre-signed. It also assumes that it's valid - make sure to confirm somewhere else.
+        void appendStaticDataToCurrentBlock(uint8_t* data, uint32_t size);
+        void appendDynamicDataToCurrentBlock(std::vector<uint8_t> data);
+        bool saveCurrentBlockDynamicData(bool overwrite, bool freeAfter);
+        //void appendTxToCurrentBlockWithSign(CTransaction *tx, CWallet *srcWallet); //Add transaction to current block. This method auto-signes the transaction.
+        void appendTxToCurrentBlock(std::string signedTx); //Add a foreign transaction to current block. Needs to be pre-signed. It also assumes that it's valid - make sure to confirm somewhere else.
         void nextBlock(bool save = true, bool distribute = true);       // Continue to next block
         void distributeBlock(CBlock* block);   // Distribute written block to other nodes
         CBlock* getCurrentBlock(); // Gets a pointer to the current block
@@ -57,6 +58,10 @@ namespace DeFile::Blockchain
         void pushBlock(CBlock* block);
         void clear();
         bool hasHash(uint8_t* hash, uint32_t depth);
+
+        Storage::IStorage* getStoragePtr() {
+            return mStorage;
+        }
     };
 
 }

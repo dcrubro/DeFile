@@ -43,8 +43,7 @@ namespace DeFile::Blockchain
         }
     }
 
-    CChain::~CChain()
-    {
+    CChain::~CChain() {
         if(mClients.size() != 0)
         {
             for(std::vector<Net::CClient*>::iterator it = mClients.begin(); it != mClients.end(); ++it)
@@ -65,21 +64,28 @@ namespace DeFile::Blockchain
         mLog.writeLine("Cleanup completed.");
     }
 
-    void CChain::appendToCurrentBlock(uint8_t* data, uint32_t size)
-    {
-        mCurrentBlock->appendData(data, size);
+    void CChain::appendStaticDataToCurrentBlock(uint8_t* data, uint32_t size) {
+        mCurrentBlock->appendStaticData(data, size);
+    }
+
+    void CChain::appendDynamicDataToCurrentBlock(std::vector<uint8_t> data) {
+        mCurrentBlock->appendDynamicData(data);
+    }
+
+    bool CChain::saveCurrentBlockDynamicData(bool overwrite, bool freeAfter) {
+        mStorage->saveBlockDynamicData(mCurrentBlock, overwrite, freeAfter);
     }
 
     /*void CChain::appendTxToCurrentBlockWithSign(CTransaction *tx, CWallet *srcWallet) {
         mCurrentBlock->addTransactionWithSign(tx, srcWallet, this);
     }*/
 
-    void CChain::appendTxToCurrentBlock(std::string &signedTx) {
+    void CChain::appendTxToCurrentBlock(std::string signedTx) {
         mCurrentBlock->addTransaction(signedTx);
     }
 
-    void CChain::nextBlock(bool save, bool distribute)
-    {
+    void CChain::nextBlock(bool save, bool distribute) {
+        //std::cout << &mCurrentBlock << "\n";
         mCurrentBlock->calculateHash();
         if(save)
             mStorage->save(mCurrentBlock, mChain.size(), true);

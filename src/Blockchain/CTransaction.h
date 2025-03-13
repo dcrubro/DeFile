@@ -13,6 +13,8 @@
 #include "Crypto/CCryptoUtils.h"
 
 namespace DeFile::Blockchain {
+    //By the version 1 transaction definition, a raw, non-signed, non-serialized transaction is 173 bytes long.
+    //The final size of a fully signed, serialized and stringified transaction is 552 bytes, and it's stored in the final block.
     class CTransaction {
         private:
             uint8_t mVersion;
@@ -21,7 +23,8 @@ namespace DeFile::Blockchain {
             uint64_t mTransferredAmount;
             uint64_t mSourceNewBalance;
             uint64_t mDestinationNewBalance;
-            uint64_t mTimestamp;
+            uint64_t mTimestamp; //Note: This timestamp indicates when the transaction was defined, not when it was signed or when it was validated in a block.
+                                 //The real timestamp of when the network will indicate the transaction took place will still be the corresponding block's timestamp.
             uint8_t mTxHash[SHA256_DIGEST_LENGTH];
             
             uint16_t mTxSize; // Size of the transaction. This should only be accessed after hashing.

@@ -190,8 +190,10 @@ namespace DeFile::Blockchain {
             //Get the transaction list
             std::vector<std::string> txs = cur->getTransactions();
             
-            for (const std::string &tx : txs) {
-                std::string data = CTransaction::decodeTransaction(tx);
+            //Start at the end of the transactions list, since we'll take the latest (added) transaction in the block as the valid one.
+            //This order is correct, since before adding a transaction to a block, it is cross-referenced with other transactions, starting with the latest one.
+            for (int i = (txs.size() - 1); i >= 0; i--) {
+                std::string data = CTransaction::decodeTransaction(txs[i]);
                 std::cout << data << "\n";
                 //Read the src and dest address and look for a match
                 std::vector<std::string> components = splitTransactionData(data);
