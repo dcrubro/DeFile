@@ -4,6 +4,7 @@
 #include "Blockchain/Storage/CStorageLocal.h"
 #include "Blockchain/CWallet.h"
 #include "Blockchain/Constants/CConstants.h"
+#include "Blockchain/ANet/CTCPServer.h"
 #include <iostream>
 #include <ctime>
 #include <unistd.h>
@@ -43,8 +44,7 @@ void printChain(CChain* chain) {
     } while (cur = cur->getPrevBlock());
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     signal(SIGPIPE, SIG_IGN);
     if (argc == 0)
     {
@@ -90,6 +90,14 @@ int main(int argc, char **argv)
     {
         cout << "If this is an existing chain. You must specify which node to connect to using -c:\nExample: " + binName + " -c192.168.1.10\n\n";
         return 1;
+    }
+
+    try {
+        boost::asio::io_context context;
+        ANet::CTCPServer server(context, 9000);
+        context.run();
+    } catch (const std::exception &e) {
+        std::cerr << "MAIN: Exception: " << e.what() << "\n";
     }
 
     uint32_t hostPort = 9393, connectPort = 9393;
@@ -188,7 +196,7 @@ int main(int argc, char **argv)
         int blocksNumToGen = 128;
 
         for (int i = 0; i < blocksNumToGen; i++) {
-            uint32_t garbageSize = 0xFFFFF; //Roughly 1048k bytes, vectors luckily auto free
+            uint32_t garbageSize = 0xFFFF; //Roughly 65k bytes, vectors luckily auto free
             std::vector<uint8_t> garbage(garbageSize);
             for (uint32_t n = 0; n < garbageSize; n++)
                 garbage[n] = clock() % 255;

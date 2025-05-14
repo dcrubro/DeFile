@@ -19,6 +19,8 @@ namespace DeFile::Blockchain
             EMT_WRITE_BLOCK,
             EMT_CHAIN_NEW,
             EMT_CHAIN_INFO,
+            EMT_GET_BLOCK_HASH,
+
             EMT_COUNT
         };
     }

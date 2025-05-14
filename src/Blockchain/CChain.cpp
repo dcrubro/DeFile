@@ -19,7 +19,7 @@ namespace DeFile::Blockchain
         mNetPort = hostPort;
         mStorage = Storage::createStorage(storageType);  // initialize storage
         mServer = new Net::CServer(this, mNetPort);
-        CBlock* block = new CBlock(0);
+        CBlock* block = new CBlock(1, 0);
         mChain.push_back(block);  // First block (genesis)
         block->mine(mDifficulty);
         mCurrentBlock = block;
@@ -86,10 +86,11 @@ namespace DeFile::Blockchain
 
     void CChain::nextBlock(bool save, bool distribute) {
         //std::cout << &mCurrentBlock << "\n";
+        mCurrentBlock->setBlockNum(mChain.size()); // Now that we're actually pushing it to the chain, we can set the correct block number.
         mCurrentBlock->calculateHash();
         if(save)
             mStorage->save(mCurrentBlock, mChain.size(), true);
-        CBlock* block = new CBlock(mCurrentBlock);
+        CBlock* block = new CBlock(1, mCurrentBlock);
         mChain.push_back(block);
         block->mine(mDifficulty);
         
@@ -147,9 +148,8 @@ namespace DeFile::Blockchain
     bool CChain::isValid()
     {
         CBlock* cur = mCurrentBlock;
-        while(cur = cur->getPrevBlock())
-        {
-            if(!cur->isValid())
+        while (cur = cur->getPrevBlock()) {
+            if (!cur->isValid())
                 return false;
         }
         return true;
@@ -199,9 +199,12 @@ namespace DeFile::Blockchain
         return client;
     }
 
-    std::vector<Net::CClient*>* CChain::getClientsPtr()
-    {
+    std::vector<Net::CClient*>* CChain::getClientsPtr() {
         return &mClients;
+    }
+
+    std::vector<CBlock*>* CChain::getBlocksVectorPtr() {
+        return &mChain;
     }
 
     bool CChain::isReady()

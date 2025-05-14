@@ -53,6 +53,7 @@ namespace DeFile::Blockchain
         uint32_t getNetPort();
         Net::CClient* connectNewClient(const std::string& hostname, uint32_t port, bool child = false);
         std::vector<Net::CClient*>* getClientsPtr();
+        std::vector<CBlock*>* getBlocksVectorPtr();
         bool isReady();
         void insertBlock(CBlock* block);
         void pushBlock(CBlock* block);

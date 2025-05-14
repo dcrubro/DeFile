@@ -21,6 +21,8 @@ namespace DeFile::Blockchain
     {
     private:
         //Block Header - Hashed data
+        uint32_t mVersion;                              // Block version
+        uint64_t mBlockNum;                             // Block number
         uint8_t mHash[SHA256_DIGEST_LENGTH];            // Current hash
         uint8_t mPrevHash[SHA256_DIGEST_LENGTH];        // Prev hash 
         CBlock* mPrevBlock;                             // Pointer to the previous block, will be null 
@@ -39,7 +41,7 @@ namespace DeFile::Blockchain
 
         CLog mLog;
     public:
-        CBlock(CBlock* prevBlock, const uint8_t* hash = 0);                      // Constructor
+        CBlock(uint32_t version, CBlock* prevBlock, const uint8_t* hash = 0); // Constructor
         ~CBlock();                                      //
         void calculateHash(uint8_t* ret = 0);           // Calculates sha256 hash
         uint8_t* getHash();                             // Gets current hash -> mHash
@@ -56,6 +58,11 @@ namespace DeFile::Blockchain
         //Adds a foreign transaction to the block (needs to be pre-signed). It also assumes that it's valid - make sure to confirm somewhere else.
         //void addTransaction(std::string &signedTx, unsigned char* pubKey, CChain* chain);
         void addTransaction(std::string signedTx);
+
+        uint32_t getVersion() { return mVersion; }
+        void setVersion(uint32_t version) { mVersion = version; }
+        uint64_t getBlockNum() { return mBlockNum; }
+        void setBlockNum(uint64_t blockNum) { mBlockNum = blockNum; }
 
         bool hasHash();                                     //
         bool hasPrevHash();                                     //

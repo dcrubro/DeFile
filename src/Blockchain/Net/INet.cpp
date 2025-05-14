@@ -20,6 +20,8 @@ namespace DeFile::Blockchain
                 throw std::runtime_error("INet: Socket is null.");
             CPacket packet;
             packet.mVersion = recvUInt();
+            packet.mBlockVersion = recvUInt();
+            packet.mBlockNum = (uint64_t)recvUInt64();
             packet.mMessageType = (EMessageType)recvUInt();
             packet.mNonce = recvUInt();
             packet.mCreatedTS = (uint64_t)recvUInt64();
@@ -60,6 +62,8 @@ namespace DeFile::Blockchain
             if(mSocket == 0)
                 throw std::runtime_error("INet: Socket is null.");
             sendUInt(packet->mVersion);
+            sendUInt(packet->mBlockVersion);
+            sendUInt64(packet->mBlockNum);
             sendUInt(packet->mMessageType);
             sendUInt(packet->mNonce);
             sendUInt64(packet->mCreatedTS);

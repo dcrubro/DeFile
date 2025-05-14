@@ -9,7 +9,7 @@
 namespace DeFile::Blockchain
 {
 
-    CBlock::CBlock(CBlock* prevBlock, const uint8_t* hash) : mLog("Block") {
+    CBlock::CBlock(uint32_t version, CBlock* prevBlock, const uint8_t* hash) : mLog("Block") {
         mPrevBlock = prevBlock;
         if(hash)
             memcpy(mHash, hash, SHA256_DIGEST_LENGTH);
@@ -19,6 +19,8 @@ namespace DeFile::Blockchain
             memcpy(mPrevHash, mPrevBlock->getHash(), SHA256_DIGEST_LENGTH);   // Copy previous block hash to current objects previous block hash
         else
             memset(mPrevHash, 0, SHA256_DIGEST_LENGTH); // mPrevHash to nulls
+        mVersion = version;
+        mBlockNum = 0;
         mCreatedTS = CTimeUtils::getUnixTimestampNS(); // Set creation timestamp
         mNonce = 0;
         mDataSize = 0;
@@ -43,7 +45,7 @@ namespace DeFile::Blockchain
 
     void CBlock::calculateHash(uint8_t* ret) {
         uint32_t szTxs = 0;
-        uint32_t sz = (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t) + mDataSize;
+        uint32_t sz = sizeof(uint32_t) + sizeof(uint64_t) + (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t) + mDataSize;
 
         //Add the size of the transactions to actually allocate the correct size.
         for (int i = 0; i < mTransactions.size(); i++) {
@@ -54,6 +56,10 @@ namespace DeFile::Blockchain
         uint8_t* buf = new uint8_t[sz];
         uint8_t* ptr = buf;         // ptr is just a cursor
 
+        memcpy(ptr, &mVersion, sizeof(uint32_t));
+        ptr += sizeof(uint32_t);
+        memcpy(ptr, &mBlockNum, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
         memcpy(ptr, mPrevHash, SHA256_DIGEST_LENGTH * sizeof(uint8_t));
         ptr += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
         memcpy(ptr, &mCreatedTS, sizeof(uint64_t));

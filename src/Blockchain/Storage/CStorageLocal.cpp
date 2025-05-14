@@ -36,15 +36,16 @@ namespace DeFile::Blockchain
             if (mMetaData.count("LAST_BLOCK_HASH") != 0) {
                 chain->clear();
 
-                CBlock* block = new CBlock(0, mMetaData["LAST_BLOCK_HASH"].data());
+                CBlock* block = new CBlock(1, 0, mMetaData["LAST_BLOCK_HASH"].data());
                 load(block);
                 chain->push_back(block);
                 CBlock* cur = block;
 
 
                 while (cur->hasPrevHash()) {
-                    block = new CBlock(0, cur->getPrevHash());
+                    block = new CBlock(1, 0, cur->getPrevHash());
                     load(block);
+                    //loadBlockDynamicSize(block);
                     cur->setPrevBlock(block);
                     chain->insert(chain->begin(), block);
                     cur = block;
@@ -61,17 +62,10 @@ namespace DeFile::Blockchain
             std::basic_string<uint8_t> lastSavedBlockHash = mMetaData["LAST_BLOCK_HASH_STR"];
             std::cout << "\nLast known block: " << lastSavedBlockHash.c_str() << "\n";
 
-            //bool hashHit = false;
-
             for (int i = 0; i < chain->size(); i++) {
                 CBlock* block = chain->at(i);
-                /*if (strcmp((char*)lastSavedBlockHash.data(), block->getHashStr().c_str()) == 0)
-                    hashHit = true;
-                */
-                //if (hashHit) {
                 this->save(block, chain->size(), true);
                 continue;
-                //}
             }
         }
 
@@ -83,10 +77,21 @@ namespace DeFile::Blockchain
                 uint32_t version = 0;
                 r = fread(&version, sizeof(uint32_t), 1, file);
                 if (r != 1)
-                    throw std::runtime_error("Could not read version.");
-
+                    throw std::runtime_error("Could not read storage version.");
                 //todo: check version
-
+                
+                uint32_t blockVersion = 0;
+                r = fread(&blockVersion, sizeof(uint32_t), 1, file);
+                if (r != 1)
+                    throw std::runtime_error("Could not read block version.");
+                block->setVersion(blockVersion);
+                
+                uint64_t blockNum = 0;
+                r = fread(&blockNum, sizeof(uint64_t), 1, file);
+                if (r != 1)
+                    throw std::runtime_error("Could not read block number.");
+                block->setBlockNum(blockNum);
+                
                 uint8_t hash[SHA256_DIGEST_LENGTH];
                 r = fread(hash, sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);
                 if (r != SHA256_DIGEST_LENGTH)
@@ -169,6 +174,10 @@ namespace DeFile::Blockchain
 
             if (file) {
                 fwrite(&Version, sizeof(uint32_t), 1, file);
+                uint32_t blockVersion = block->getVersion();
+                fwrite(&blockVersion, sizeof(uint32_t), 1, file);
+                uint64_t blockNum = block->getBlockNum();
+                fwrite(&blockNum, sizeof(uint64_t), 1, file);
                 fwrite(block->getHash(), sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);
                 fwrite(block->getPrevHash(), sizeof(uint8_t), SHA256_DIGEST_LENGTH, file);
                 uint64_t createdTS = block->getCreatedTS();
@@ -278,6 +287,22 @@ namespace DeFile::Blockchain
             }
         }
 
+        void CStorageLocal::loadBlockDynamicSize(CBlock* block) {
+            std::string blockDataFn("dyndata/" + block->getHashStr());
+            FILE* file = fopen(blockDataFn.c_str(), "rb");
+            if (file) {
+                uint32_t dataSize;
+                size_t r = fread(&dataSize, sizeof(uint32_t), 1, file);
+                if (r != 0)
+                    throw std::runtime_error("Could not read block dynamic data size");
+                
+                //Save the size
+                block->setDynamicDataSize(dataSize);
+            }
+
+            fclose(file);
+        }
+
         void CStorageLocal::loadBlockDynamicData(CBlock* block) {
             std::string blockDataFn("dyndata/" + block->getHashStr());
             FILE* file = fopen(blockDataFn.c_str(), "rb");
@@ -326,8 +351,8 @@ namespace DeFile::Blockchain
             fclose(file);  // Ensure the file is closed
         
             if (freeAfter) {
-                //block->getDynamicData()->clear();
-                //block->getDynamicData()->shrink_to_fit();
+                block->getDynamicData()->clear();
+                block->getDynamicData()->shrink_to_fit();
             }
         }
 

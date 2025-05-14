@@ -275,6 +275,8 @@ namespace DeFile::Blockchain
                     do
                     {
                         respPacket.mMessageType = EMT_WRITE_BLOCK;
+                        respPacket.mBlockVersion = block->getVersion();
+                        respPacket.mBlockNum = block->getBlockNum();
                         respPacket.mData = block->getStaticData();
                         respPacket.mDataSize = block->getStaticDataSize();
                         respPacket.mCreatedTS = block->getCreatedTS();
@@ -295,15 +297,12 @@ namespace DeFile::Blockchain
             // Distribute new block
             else if (packet->mMessageType == EMT_WRITE_BLOCK)
             {
-                if(PCHAIN->hasHash(packet->mHash, 0))
-                {
+                if (PCHAIN->hasHash(packet->mHash, 0)) {
                     mLog.writeLine("Block has been already mined.");
                     CPacket respPacket;
                     respPacket.mMessageType = EMT_ERR;
                     pkg->sendPacket(&respPacket);
-                }
-                else if(memcmp(packet->mPrevHash,PCHAIN->getCurrentBlock()->getHash(),SHA256_DIGEST_LENGTH) != 0)
-                {
+                } else if (memcmp(packet->mPrevHash,PCHAIN->getCurrentBlock()->getHash(),SHA256_DIGEST_LENGTH) != 0) {
                     mLog.writeLine("Data size: " + std::to_string(packet->mDataSize));
                     PCHAIN->appendStaticDataToCurrentBlock(packet->mData, packet->mDataSize);
                     PCHAIN->nextBlock();
@@ -312,15 +311,21 @@ namespace DeFile::Blockchain
                     respPacket.mMessageType = EMT_ACK;
                     pkg->sendPacket(&respPacket);
                     mLog.writeLine("Received block: " + PCHAIN->getCurrentBlock()->getHashStr());
-                }
-                else
-                {
+                } else {
                     mLog.writeLine("Block previous hash mismatch.");
                     CPacket respPacket;
                     respPacket.mMessageType = EMT_ERR;
                     pkg->sendPacket(&respPacket);
                 }
 
+            } 
+            
+            // Process block verification request
+            else if (packet->mMessageType == EMT_GET_BLOCK_HASH) {
+                PCHAIN->getBlocksVectorPtr(); //TODO: Verify against block in memory
+                if (PCHAIN->getBlocksVectorPtr()) {
+
+                }
             }
 
             // Error unknown packet
