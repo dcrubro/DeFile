@@ -4,6 +4,7 @@
 #include "Blockchain/Storage/CStorageLocal.h"
 #include "Blockchain/CWallet.h"
 #include "Blockchain/Constants/CConstants.h"
+#include "Blockchain/ANet/CTCPServer.h"
 #include <iostream>
 #include <ctime>
 #include <unistd.h>
@@ -31,20 +32,19 @@ bool tobool(std::string str) {
 
 void printChain(CChain* chain) {
     CBlock *cur = chain->getCurrentBlock();
-    do
-    {
+    do {
         uint64_t ts = cur->getCreatedTS();
         string tstr(std::to_string(ts));
         tstr.resize(tstr.size() - 1);
+        //Note: The outputed value of the block size is the size of the block on disk (more or less), not the size in memory.
         if(cur == chain->getCurrentBlock())
-            cout << "CURRENT\t" << cur->getHashStr() << "\tTimeStamp " << tstr << "\tData Size " << cur->getDataSize() << "\n";
+            cout << "CURRENT\t" << cur->getHashStr() << "\tTimeStamp " << tstr << "\tBlock Size (Bytes) " << cur->getTotalBlockSize() << "\n";
         else
-            cout << "Block\t" << cur->getHashStr() << "\tTimeStamp " << tstr << "\tData Size " << cur->getDataSize() << "\n";
+            cout << "Block\t" << cur->getHashStr() << "\tTimeStamp " << tstr << "\tBlock Size (Bytes) " << cur->getTotalBlockSize() << "\n";
     } while (cur = cur->getPrevBlock());
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     signal(SIGPIPE, SIG_IGN);
     if (argc == 0)
     {
@@ -90,6 +90,14 @@ int main(int argc, char **argv)
     {
         cout << "If this is an existing chain. You must specify which node to connect to using -c:\nExample: " + binName + " -c192.168.1.10\n\n";
         return 1;
+    }
+
+    try {
+        boost::asio::io_context context;
+        ANet::CTCPServer server(context, 9000);
+        context.run();
+    } catch (const std::exception &e) {
+        std::cerr << "MAIN: Exception: " << e.what() << "\n";
     }
 
     uint32_t hostPort = 9393, connectPort = 9393;
@@ -164,7 +172,7 @@ int main(int argc, char **argv)
         );
         testTx.calculateHash();
         std::string signedTx = wallet.signTransaction(&testTx); //This is a junk signature, we'll accept it temporarily
-        //std::cout << signedTx << "\n";
+        std::cout << signedTx << "\n";
         /*uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;
@@ -173,8 +181,8 @@ int main(int argc, char **argv)
 
         //chain.appendToCurrentBlock(garbage, 32);
 
-        //
-        chain.appendTxToCurrentBlock(signedTx);
+        //Note: For future reference, transactions from the system mint or system wallet don't need to be signed, since they are requested by every node.
+        chain.getCurrentBlock()->addTransaction(signedTx);
         //delete[] garbage;
 
         cout << "TX appended to current block.\n";
@@ -186,61 +194,30 @@ int main(int argc, char **argv)
         cout << "Current Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
 
         int blocksNumToGen = 128;
-        uint64_t balanceCounter = 100000;
 
         for (int i = 0; i < blocksNumToGen; i++) {
-            //Verified transaction to system
-            CTransaction tx(
-                1, //Version
-                wallet.getWalletAddress(), //SRC
-                Constants::CConstants::SYSTEM_WALLET, //DEST
-                1,  //Amount
-                balanceCounter - 1,  //SrcNew
-                1000 - balanceCounter + 1   //DestNew
-            );
-            tx.calculateHash();
-            std::string sTx = wallet.signTransaction(&tx);
-            //std::cout << sTx << "\n\n";
-            bool isVerified = CWallet::verifyTransaction(sTx, wallet.getPubKey(), &chain);
+            uint32_t garbageSize = 0xFFFF; //Roughly 65k bytes, vectors luckily auto free
+            std::vector<uint8_t> garbage(garbageSize);
+            for (uint32_t n = 0; n < garbageSize; n++)
+                garbage[n] = clock() % 255;
 
-            if (isVerified) {
-                chain.appendTxToCurrentBlock(sTx);
-                balanceCounter--;
-            }
-            else
-                std::cout << "Couldn't verify transaction. Skipping.\n";
-            //delete[] garbage;
-
-            cout << "Garbage appended to current block.\n";
-
-            chain.nextBlock();
+            cout << "Garbage generated.\n";
+            CBlock* cB = chain.getCurrentBlock();
+            cout << &cB << "\n";
+            chain.getCurrentBlock()->appendDynamicData(garbage);
+            //chain.appendDynamicDataToCurrentBlock(garbage); //Pass a copy of the data. TODO: Make this better and save in chunks to preserve memory.
+            cout << "Garbage appended to current block dynamic data.\n";
+            cB = chain.getCurrentBlock();
+            cout << &cB << "\n";
+            chain.getStoragePtr()->saveBlockDynamicData(chain.getCurrentBlock(), true, true);
+            cB = chain.getCurrentBlock();
+            cout << &cB << "\n";
+            chain.nextBlock(true, true);
 
             cout << "Next block mined.\n";
 
             cout << "Previous Hash: " << chain.getCurrentBlock()->getPrevBlock()->getHashStr() << "\nNonce: " << chain.getCurrentBlock()->getNonce() << "\n";
         }
-
-        //Send a junk tx with more money than the address has
-        CTransaction tx(
-            1, //Version
-            wallet.getWalletAddress(), //SRC
-            Constants::CConstants::SYSTEM_WALLET, //DEST
-            999999999,  //Amount
-            0,  //SrcNew
-            999999999   //DestNew
-        );
-        tx.calculateHash();
-        std::string sTx = wallet.signTransaction(&tx);
-        std::cout << sTx << "\n\n";
-        bool isVerified = CWallet::verifyTransaction(sTx, wallet.getPubKey(), &chain);
-        std::cout << isVerified << "\n\n";
-        if (isVerified) {
-            chain.appendTxToCurrentBlock(sTx);
-            balanceCounter--;
-        }
-        else
-            std::cout << "Couldn't verify transaction. Skipping.\n";
-        //delete[] garbage;
 
         cout << "Garbage appended to current block.\n";
 

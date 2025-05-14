@@ -14,11 +14,12 @@ namespace DeFile::Blockchain
 {
     namespace Net
     {
-        class CPacket
-        {
+        class CPacket {
         public:
             uint32_t mVersion;
             EMessageType mMessageType;
+            uint32_t mBlockVersion;
+            uint64_t mBlockNum;
             uint32_t mDataSize;
             uint8_t* mData;
             bool mTrackDataAlloc;
@@ -39,8 +40,7 @@ namespace DeFile::Blockchain
             {
             }
 
-            void destroyData()
-            {
+            void destroyData() {
                 if(mTrackDataAlloc && mData)
                 {
                     delete[] mData;
@@ -49,11 +49,12 @@ namespace DeFile::Blockchain
                 mTrackDataAlloc = false;
             }
 
-            void reset()
-            {
+            void reset() {
                 destroyData();
                 mVersion = 1;
+                mBlockVersion = 1;
                 mMessageType = EMT_NULL;
+                mBlockNum = 0;
                 mNonce = 0;
                 mCreatedTS = 0;
                 memset(mHash, 0, SHA256_DIGEST_LENGTH);
@@ -63,8 +64,7 @@ namespace DeFile::Blockchain
                 mTransactions.clear();
             }
 
-            void setData(uint8_t* data, uint64_t dataSize, bool trackAlloc = false)
-            {
+            void setData(uint8_t* data, uint64_t dataSize, bool trackAlloc = false) {
                 mData = data;
                 mDataSize = dataSize;
                 mTrackDataAlloc = trackAlloc;

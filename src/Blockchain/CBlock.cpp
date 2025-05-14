@@ -9,7 +9,7 @@
 namespace DeFile::Blockchain
 {
 
-    CBlock::CBlock(CBlock* prevBlock, const uint8_t* hash) : mLog("Block") {
+    CBlock::CBlock(uint32_t version, CBlock* prevBlock, const uint8_t* hash) : mLog("Block") {
         mPrevBlock = prevBlock;
         if(hash)
             memcpy(mHash, hash, SHA256_DIGEST_LENGTH);
@@ -19,22 +19,33 @@ namespace DeFile::Blockchain
             memcpy(mPrevHash, mPrevBlock->getHash(), SHA256_DIGEST_LENGTH);   // Copy previous block hash to current objects previous block hash
         else
             memset(mPrevHash, 0, SHA256_DIGEST_LENGTH); // mPrevHash to nulls
+        mVersion = version;
+        mBlockNum = 0;
         mCreatedTS = CTimeUtils::getUnixTimestampNS(); // Set creation timestamp
         mNonce = 0;
         mDataSize = 0;
         mData = 0;
+
+        mDynamicData = {};
+        mDynamicDataSize = 0;
         if(!hash)
             calculateHash();
     }
 
     CBlock::~CBlock() {
-        if(mData)
+        if (mData)
             delete[] mData;
+        
+        mTransactions.clear();
+        mTransactions.shrink_to_fit();
+        
+        mDynamicData.clear();
+        mDynamicData.shrink_to_fit();
     }
 
     void CBlock::calculateHash(uint8_t* ret) {
         uint32_t szTxs = 0;
-        uint32_t sz = (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t) + mDataSize;
+        uint32_t sz = sizeof(uint32_t) + sizeof(uint64_t) + (SHA256_DIGEST_LENGTH * sizeof(uint8_t)) + sizeof(uint64_t) + sizeof(uint32_t) + mDataSize;
 
         //Add the size of the transactions to actually allocate the correct size.
         for (int i = 0; i < mTransactions.size(); i++) {
@@ -45,6 +56,10 @@ namespace DeFile::Blockchain
         uint8_t* buf = new uint8_t[sz];
         uint8_t* ptr = buf;         // ptr is just a cursor
 
+        memcpy(ptr, &mVersion, sizeof(uint32_t));
+        ptr += sizeof(uint32_t);
+        memcpy(ptr, &mBlockNum, sizeof(uint64_t));
+        ptr += sizeof(uint64_t);
         memcpy(ptr, mPrevHash, SHA256_DIGEST_LENGTH * sizeof(uint8_t));
         ptr += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
         memcpy(ptr, &mCreatedTS, sizeof(uint64_t));
@@ -102,12 +117,10 @@ namespace DeFile::Blockchain
         return mPrevBlock;
     }
 
-    void CBlock::appendData(uint8_t* data, uint32_t size)
-    {
+    void CBlock::appendStaticData(uint8_t* data, uint32_t size) {
         uint8_t* newData = new uint8_t[mDataSize + size];
         uint8_t* ptr = newData;
-        if(mDataSize != 0)
-        {
+        if (mDataSize != 0) {
             memcpy(ptr, mData, mDataSize);
             ptr += mDataSize;
             delete[] mData;
@@ -115,6 +128,11 @@ namespace DeFile::Blockchain
         memcpy(ptr, data, size);
         mData = newData;
         mDataSize += size;
+    }
+
+    void CBlock::appendDynamicData(std::vector<uint8_t> data) {
+        mDynamicDataSize += data.size();
+        mDynamicData.insert(mDynamicData.end(), data.begin(), data.end());
     }
 
     bool CBlock::isDifficulty(int difficulty)
@@ -137,9 +155,21 @@ namespace DeFile::Blockchain
         }        
     }
 
-    uint32_t CBlock::getNonce()
-    {
+    uint32_t CBlock::getNonce() {
         return mNonce;
+    }
+
+    uint64_t CBlock::getTotalBlockSize() {
+        //Header size (mostly static)
+        uint64_t sz = sizeof(SHA256_DIGEST_LENGTH) * 3 + mDataSize + sizeof(uint64_t) + sizeof(uint32_t);
+        
+        for (std::string &tx : mTransactions) {
+            sz += tx.size();
+        }
+
+        sz += mDynamicDataSize;
+
+        return sz;
     }
     
     /*void CBlock::addTransaction(std::string &signedTx, unsigned char* pubKey, CChain* chain) {
@@ -152,7 +182,7 @@ namespace DeFile::Blockchain
         mLog.writeLine("Could not verify transaction. Did not add.");
     }*/
 
-    void CBlock::addTransaction(std::string &signedTx) {
+    void CBlock::addTransaction(std::string signedTx) {
         mTransactions.push_back(signedTx);
         mLog.writeLine("Added foreign transaction to current block.");
     }
@@ -222,26 +252,38 @@ namespace DeFile::Blockchain
         mNonce = nonce;
     }
 
-    uint32_t CBlock::getDataSize()
-    {
+    uint32_t CBlock::getStaticDataSize() {
         return mDataSize;
     }
 
-    uint8_t* CBlock::getData()
-    {
+    void CBlock::setStaticDataSize(uint32_t size) {
+        mDataSize = size;
+    }
+
+    uint8_t* CBlock::getStaticData() {
         return mData;
     }
 
-    void CBlock::setAllocatedData(uint8_t* data, uint32_t sz)
-    {
+    void CBlock::setAllocatedData(uint8_t* data, uint32_t sz) {
         if(mData)
             delete[] mData;
         mData = data;
         mDataSize = sz;
     }
 
-    bool CBlock::isValid()
-    {
+    uint32_t CBlock::getDynamicDataSize() {
+        return mDynamicDataSize;
+    }
+
+    void CBlock::setDynamicDataSize(uint32_t size) {
+        mDynamicDataSize = size;
+    }
+
+    std::vector<uint8_t>* CBlock::getDynamicData() {
+        return &mDynamicData;
+    }
+
+    bool CBlock::isValid() {
         uint8_t hash[SHA256_DIGEST_LENGTH];
         memset(hash, 0, SHA256_DIGEST_LENGTH);
         calculateHash(hash);

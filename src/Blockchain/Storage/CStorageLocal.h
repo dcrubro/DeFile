@@ -18,8 +18,10 @@ namespace DeFile::Blockchain
         {
         private:
             static std::string mDefaultBasePath;
+            static std::string mDefaultDynmanicDataBasePath;
             const uint32_t Version = 1;
             const std::string mBasePath = std::string("data/");
+            const std::string mDynamicDataBasePath = std::string("dyndata/");
             const uint32_t mChunkSize = 2048;
             std::map<std::string, std::basic_string<uint8_t>> mMetaData;
 
@@ -36,6 +38,9 @@ namespace DeFile::Blockchain
             virtual void load(CBlock* block);
             virtual void save(CBlock* block, uint64_t blockCount, bool checkExistance);
 
+            virtual void loadBlockDynamicSize(CBlock* block);
+            virtual void loadBlockDynamicData(CBlock* block);
+            virtual void saveBlockDynamicData(CBlock* block, bool overwrite, bool freeAfter);
 
             void loadMetaData();
             void saveMetaData();

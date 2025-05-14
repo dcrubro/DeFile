@@ -2,6 +2,7 @@
 
 #include "CClient.h"
 #include "../CChain.h"
+#include "../CWallet.h"
 #include <stdexcept>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -186,7 +187,9 @@ namespace DeFile::Blockchain
                     CBlock* nextBlock = 0;
                     while (gotPacket.mMessageType == EMT_WRITE_BLOCK)
                     {
-                        CBlock *block = new CBlock(0, gotPacket.mHash);
+                        CBlock *block = new CBlock(1, 0, gotPacket.mHash);
+                        block->setVersion(gotPacket.mBlockVersion);
+                        block->setBlockNum(gotPacket.mBlockNum);
                         block->setPrevHash(gotPacket.mPrevHash);
                         block->setCreatedTS(gotPacket.mCreatedTS);
                         block->setNonce(gotPacket.mNonce);
@@ -195,6 +198,9 @@ namespace DeFile::Blockchain
                         block->setAllocatedData(data, gotPacket.mDataSize);
                         block->setTransactions(gotPacket.mTransactions);
 
+                        //Verify transaction validity
+                        
+
                         if(nextBlock)
                             nextBlock->setPrevBlock(block);
 
@@ -202,7 +208,7 @@ namespace DeFile::Blockchain
 
                         nextBlock = block;
 
-                        mLog.writeLine("Copied block: " + block->getHashStr() + " Size: " + std::to_string(block->getDataSize()));
+                        mLog.writeLine("Copied block: " + block->getHashStr() + " Size: " + std::to_string(block->getStaticDataSize()));
                         gotPacket.destroyData();
                         gotPacket = recvPacket();
                     }
@@ -265,12 +271,14 @@ namespace DeFile::Blockchain
         {
             CPacket packet;
             packet.mMessageType = EMT_WRITE_BLOCK;
-            packet.mData = block->getData();
-            packet.mDataSize = block->getDataSize();
-            //packet.mCreatedTS = block->getCreatedTS();
+            packet.mBlockVersion = block->getVersion();
+            packet.mBlockNum = block->getBlockNum();
+            packet.mData = block->getStaticData();
+            packet.mDataSize = block->getStaticDataSize();
+            packet.mCreatedTS = block->getCreatedTS();
             memcpy(packet.mHash, block->getHash(), SHA256_DIGEST_LENGTH);
             memcpy(packet.mPrevHash, block->getPrevHash(), SHA256_DIGEST_LENGTH);
-            //packet.mTransactions = block->getTransactions();
+            packet.mTransactions = block->getTransactions();
             mQueue.push(packet);
         }
 

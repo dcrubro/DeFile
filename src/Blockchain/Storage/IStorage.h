@@ -18,6 +18,10 @@ namespace DeFile::Blockchain
             virtual void load(CBlock* block) = 0;                       // Load block
             virtual void save(CBlock* block, uint64_t blockCount, bool checkExistance) = 0;  // Save block
 
+            virtual void loadBlockDynamicSize(CBlock* block) = 0; // Load the size of the dynamic data
+            virtual void loadBlockDynamicData(CBlock* block) = 0; // Load the dynamic data of a block
+            virtual void saveBlockDynamicData(CBlock* block, bool overwrite, bool freeAfter) = 0; // ^^ Save, freeAfter specifies if the dynamic data in memory should be freed after.
+
             virtual void dispose() = 0;                                 // dispose 
         };
     }
