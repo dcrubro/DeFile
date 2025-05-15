@@ -95,13 +95,15 @@ int main(int argc, char **argv) {
 
     try {
         boost::asio::io_context context;
-        auto server = std::make_shared<ANet::CTCPServer>(context, 9000);
-        auto client = std::make_shared<ANet::CTCPClient>(context, "127.0.0.1", "9000");
+        auto server = std::make_shared<ANet::CTCPServer>(context, 9393);
+        auto client = std::make_shared<ANet::CTCPClient>(context, "127.0.0.1", "9393");
+        client->start();
         context.run();
     } catch (const std::exception &e) {
         std::cerr << "MAIN: Exception: " << e.what() << "\n";
     }
 
+    //TODO: Remove the old netcode
     uint32_t hostPort = 9393, connectPort = 9393;
     std::string host(params["h"]), connectTo(params["c"]);
     size_t pos = params["h"].find(':');
@@ -127,13 +129,13 @@ int main(int argc, char **argv) {
             Storage::CStorageLocal::setDefaultBasePath(params["s"]);
     }
 
-    cout << "Start.\n";
+    LOG("Started " + std::string(Constants::CConstants::NODE_IDENTIFIER));
 
     CChain chain(host, hostPort, isNewChain, connectTo, 0, storageType, connectPort);
     gChain = &chain;
 
-    cout << "Chain intialized!\n";
-    cout << "Current block count: " << chain.getBlockCount() << "\n";
+    LOG("Chain intialized!");
+    LOG("Current block count: " << chain.getBlockCount());
 
 
     if (chain.isValid())
@@ -155,10 +157,10 @@ int main(int argc, char **argv) {
 
     //Create a new wallet for this session (temporary)
     CWallet wallet(true);
-    std::cout << "Created Wallet.\n\n";
+    LOG("Created Wallet.\n");
     //if (true) {}
     //std::cout << "\nPrivate Key (Length: " << wallet.getPrivKeyStr().size() << "): " << wallet.getPrivKey();
-    std::cout << "\nWallet Address: " << wallet.getWalletAddress();
+    LOG("\nWallet Address: " << wallet.getWalletAddress());
     std::cout << "\n\n";
 
     if (isNewChain)
@@ -174,7 +176,7 @@ int main(int argc, char **argv) {
         );
         testTx.calculateHash();
         std::string signedTx = wallet.signTransaction(&testTx); //This is a junk signature, we'll accept it temporarily
-        std::cout << signedTx << "\n";
+        //std::cout << signedTx << "\n";
         /*uint8_t *garbage = new uint8_t[32];
         for (uint32_t n = 0; n < 32; n++)
             garbage[n] = clock() % 255;

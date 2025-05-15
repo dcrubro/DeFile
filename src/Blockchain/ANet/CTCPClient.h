@@ -4,6 +4,7 @@
 #define __C_TCPCLIENT_INCLUDED__
 
 #include "../../MLogger.h"
+#include "CMessageHandler.h"
 #include <iostream>
 #include <memory>
 #include <array>
@@ -19,45 +20,62 @@ namespace DeFile::Blockchain::ANet {
                        const std::string &port)
                 : mResolver(ioContext), mSocket(ioContext)
             {
-                mConnect(host, port);
+                mHost = host;
+                mPort = port;
             }
 
-        private:
-            void mConnect(const std::string& host, const std::string& port) {
+            void start() {
                 auto self = shared_from_this();
-
-                mResolver.async_resolve(host, port,
+                mResolver.async_resolve(mHost, mPort,
                     [this, self](boost::system::error_code ec, tcp::resolver::results_type endpoints) {
                         if (!ec) {
                             boost::asio::async_connect(mSocket, endpoints,
                                 [this, self](boost::system::error_code ec, const tcp::endpoint&) {
                                     if (!ec) {
-                                        read();
+                                        LOG("Client connected.");
+                                        mHandler = std::make_shared<CMessageHandler>(std::move(mSocket));
+                                        mHandler->onMessage([this](EMessageType type, const std::string& data) {
+                                            mHandleMessage(type, data);
+                                        });
+                                        mHandler->start();
+                                    
+                                        // Example: say hello
+                                        mHandler->sendMessage(EMessageType::HELLO, "Hello, I am " + std::string(Constants::CConstants::NODE_IDENTIFIER));
                                     } else {
-                                        ERROR("Connect failed: " << ec.message());
+                                        ERROR("Client connect failed: " << ec.message());
                                     }
                                 });
                         } else {
-                            ERROR("Resolve failed: " << ec.message());
+                            ERROR("Client resolve failed: " << ec.message());
                         }
                     });
             }
 
-            void read() {
-                auto self = shared_from_this();
-                mSocket.async_read_some(boost::asio::buffer(mBuffer),
-                    [this, self](boost::system::error_code ec, std::size_t length) {
-                        if (!ec) {
-                            LOG("Received: " << std::string(mBuffer.data(), length));
-                        } else {
-                            ERROR("Read failed: " << ec.message());
-                        }
-                    });
+            void sendMessage(EMessageType type, const std::string& data = "") {
+                if (mHandler) mHandler->sendMessage(type, data);
             }
-        
+
+        private:
+            void mHandleMessage(EMessageType type, const std::string& data) {
+                using namespace DeFile::Blockchain::ANet;
+                switch (type) {
+                    case EMessageType::HELLO:
+                        LOG("Client received HELLO: " << data);
+                        mHandler->sendMessage(EMessageType::TXTMSG, "Test msg.");
+                        break;
+                    case EMessageType::TXTMSG:
+                        LOG("Client received text: " << data);
+                        break;
+                    default:
+                        LOG("Client received unknown message type.");
+                        break;
+                }
+            }
+            
             tcp::resolver mResolver;
             tcp::socket mSocket;
-            std::array<char, 1024> mBuffer;
+            std::shared_ptr<CMessageHandler> mHandler;
+            std::string mHost, mPort;
     };
 }
 
