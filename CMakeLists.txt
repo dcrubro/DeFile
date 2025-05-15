@@ -45,6 +45,7 @@ set(SOURCES
     src/Blockchain/Net/CClient.cpp
     src/Blockchain/Net/CServer.cpp
     src/Blockchain/ANet/CTCPServer.cpp
+    src/Blockchain/ANet/CMessageHandler.cpp
     src/Blockchain/CChain.cpp
     src/main.cpp
 )

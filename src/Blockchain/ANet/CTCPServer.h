@@ -3,6 +3,7 @@
 #ifndef __C_TCPSERVER_INCLUDED__
 #define __C_TCPSERVER_INCLUDED__
 
+#include "../../MLogger.h"
 #include "CTCPConnection.h"
 #include <unordered_set>
 
@@ -12,6 +13,7 @@ namespace DeFile::Blockchain::ANet {
             CTCPServer(boost::asio::io_context &ioContext, uint16_t port)
                 : mIoContext(ioContext), mAcceptor(ioContext, tcp::endpoint(tcp::v4(), port))
             {
+                LOG("Started TCP server on port " + port);
                 mStartAccept();
             }
 

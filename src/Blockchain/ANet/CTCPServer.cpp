@@ -4,21 +4,22 @@
 
 namespace DeFile::Blockchain::ANet {
     void CTCPServer::mStartAccept() {
-        auto newCon = CTCPConnection::create(mIoContext);
-        auto self = this;
-
-        mAcceptor.async_accept(newCon->socket(),
-            [this, newCon](boost::system::error_code ec) {
+        mAcceptor.async_accept(
+            [this](boost::system::error_code ec, tcp::socket socket) {
                 if (!ec) {
-                    mClients.insert(newCon);
+                    auto client = CTCPConnection::create(std::move(socket));
 
-                    // Pass a lambda to remove this client when done
-                    newCon->start([this](CTCPConnection::pointer conn) {
-                        mClients.erase(conn);
-                    });
+                    mClients.insert(client); //Track active client
+
+                    client->start(); //Start message handling
+
+                    //TODO: unregister on disconnect (requires tracking logic)
+                } else {
+                    ERROR("Accept failed: " << ec.message());
                 }
 
-                mStartAccept(); //Accept next connection
-            });
+                mStartAccept(); //Continue accepting
+            }
+        );
     }
 }
