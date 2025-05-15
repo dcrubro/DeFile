@@ -9,7 +9,10 @@
 #include <ctime>
 #include <cstdint>
 #include <boost/asio.hpp>
+#include "EMessageType.h"
+#include "CMessageHandler.h"
 #include "../CTimeUtils.h"
+#include "../Constants/CConstants.h"
 
 using boost::asio::ip::tcp;
 
@@ -18,39 +21,43 @@ namespace DeFile::Blockchain::ANet {
         public:
             using pointer = std::shared_ptr<CTCPConnection>;
 
-            static pointer create(boost::asio::io_context &ioContext) {
-                return pointer(new CTCPConnection(ioContext));
+            static pointer create(boost::asio::ip::tcp::socket socket) {
+                return pointer(new CTCPConnection(std::move(socket)));
             }
 
-            tcp::socket &socket() {
-                return mSocket;
+            void start() {
+                mHandler->onMessage([this](EMessageType type, const std::string& data) {
+                    handleMessage(type, data);
+                });
+                mHandler->start();
+                
+                //mHandler->sendMessage(EMessageType::HELLO, "Welcome, client!");
             }
-
-            void start(std::function<void(pointer)> onDisconnect) {
-                mMessage = mMakeDaytimeString();
-                auto self = shared_from_this();
-
-                boost::asio::async_write(mSocket, boost::asio::buffer(mMessage),
-                    [self, onDisconnect](boost::system::error_code ec, std::size_t /*length*/) {
-                        if (!ec) {
-                            // Connection automatically closes when the shared_ptr goes out of scope
-                        }
-
-                        onDisconnect(self);
-                    });
+        
+            void sendMessage(EMessageType type, const std::string& data = "") {
+                mHandler->sendMessage(type, data);
             }
         
         private:
-            CTCPConnection(boost::asio::io_context &ioContext)
-                : mSocket(ioContext) {}
-            
-            std::string mMakeDaytimeString() {
-                std::time_t now = std::time(nullptr);
-                return std::ctime(&now);
-            }
+            CTCPConnection(boost::asio::ip::tcp::socket socket)
+                : mHandler(std::make_shared<CMessageHandler>(std::move(socket))) {}
 
-            tcp::socket mSocket;
-            std::string mMessage;
+            void handleMessage(EMessageType type, const std::string& data) {
+                switch (type) {
+                    case EMessageType::HELLO:
+                        LOG("Server received HELLO: " << data);
+                        mHandler->sendMessage(EMessageType::HELLO, "Hello, I am " + std::string(Constants::CConstants::NODE_IDENTIFIER));
+                        break;
+                    case EMessageType::TXTMSG:
+                        LOG("Server received text: " << data);
+                        break;
+                    default:
+                        LOG("Server received unknown message type.");
+                        break;
+                }
+            }
+        
+            std::shared_ptr<CMessageHandler> mHandler;
     };
 }
 
