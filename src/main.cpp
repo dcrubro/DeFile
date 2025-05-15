@@ -93,10 +93,11 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    //Reuse -h parameter temporarily
     try {
         boost::asio::io_context context;
         auto server = std::make_shared<ANet::CTCPServer>(context, 9393);
-        auto client = std::make_shared<ANet::CTCPClient>(context, "127.0.0.1", "9393");
+        auto client = std::make_shared<ANet::CTCPClient>(context, std::string(params["h"]), "9393");
         client->start();
         context.run();
     } catch (const std::exception &e) {
