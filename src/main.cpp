@@ -5,6 +5,7 @@
 #include "Blockchain/CWallet.h"
 #include "Blockchain/Constants/CConstants.h"
 #include "Blockchain/ANet/CTCPServer.h"
+#include "Blockchain/ANet/CTCPClient.h"
 #include <iostream>
 #include <ctime>
 #include <unistd.h>
@@ -94,7 +95,8 @@ int main(int argc, char **argv) {
 
     try {
         boost::asio::io_context context;
-        ANet::CTCPServer server(context, 9000);
+        auto server = std::make_shared<ANet::CTCPServer>(context, 9000);
+        auto client = std::make_shared<ANet::CTCPClient>(context, "127.0.0.1", "9000");
         context.run();
     } catch (const std::exception &e) {
         std::cerr << "MAIN: Exception: " << e.what() << "\n";
