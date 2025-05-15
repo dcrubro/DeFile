@@ -45,7 +45,7 @@ namespace DeFile::Blockchain::ANet {
             void handleMessage(EMessageType type, const std::string& data) {
                 switch (type) {
                     case EMessageType::HELLO:
-                        LOG("Server received HELLO: " << data);
+                        LOG("Server received HELLO: " << data << "FROM " + mHandler->socket().remote_endpoint().address().to_string());
                         mHandler->sendMessage(EMessageType::HELLO, "Hello, I am " + std::string(Constants::CConstants::NODE_IDENTIFIER));
                         break;
                     case EMessageType::TXTMSG:

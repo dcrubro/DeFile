@@ -17,6 +17,8 @@ namespace DeFile::Blockchain::ANet {
         public:
             CMessageHandler(tcp::socket socket)
                 : mSocket(std::move(socket)) {}
+            
+            boost::asio::ip::tcp::socket &socket() { return mSocket; }
 
             void start();
             void sendMessage(EMessageType type, const std::string &payload = "");

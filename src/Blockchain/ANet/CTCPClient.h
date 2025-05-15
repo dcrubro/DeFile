@@ -60,7 +60,7 @@ namespace DeFile::Blockchain::ANet {
                 using namespace DeFile::Blockchain::ANet;
                 switch (type) {
                     case EMessageType::HELLO:
-                        LOG("Client received HELLO: " << data);
+                        LOG("Client received HELLO: " << data << "FROM " + mHandler->socket().remote_endpoint().address().to_string());
                         mHandler->sendMessage(EMessageType::TXTMSG, "Test msg.");
                         break;
                     case EMessageType::TXTMSG:
