@@ -6,3 +6,22 @@ For anyone wondering about the functioning of the network, rather than the useag
 **DeFile** is a Peer-to-Peer network, making use of blockchain technology to allow user to safely store and/or distribute files as well as execute scripts that interact with the network.
 
 Unlike other blockchains, the stored data and deployed scripts (smart contracts) can **still be modified** after original creation, ensuring a streamlined system for users of the network to create **completely decentralized applications**, which make use of **completely decentralized storage**. This allows for **truly no-downtime applications**, since the need for 3rd party services is eliminated.
+
+## Building
+To Build DeFile, clone the repository with
+```sh
+git clone https://github.com/dcrubro/DeFile.git
+```
+Then run the following commands:
+```sh
+mkdir build
+cd build
+cmake ..
+make
+```
+Run with:
+```sh
+./DeFile <parameters>
+```
+
+*Note: You need **cmake**, **g++/gcc**, **openssl** and **libsecp256k1** (plus general dependencies) to build this project.*
