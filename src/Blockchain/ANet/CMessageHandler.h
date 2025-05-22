@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include "CNetHelper.h"
 
 using tcp = boost::asio::ip::tcp;
 
@@ -23,6 +24,9 @@ namespace DeFile::Blockchain::ANet {
             void start();
             void sendMessage(EMessageType type, const std::string &payload = "");
             void onMessage(std::function<void(EMessageType, std::string)> callback);
+            void onDisconnect(std::function<void(const boost::system::error_code&)> callback) {
+                mOnDisconnect = std::move(callback);
+            }
         
         private:
             void mReadHeader();
@@ -33,6 +37,7 @@ namespace DeFile::Blockchain::ANet {
             std::array<uint8_t, 3> mHeader{}; // [type][lenHigh][lenLow]
             std::vector<uint8_t> mBody;
             std::function<void(EMessageType, std::string)> mOnMessage;
+            std::function<void(boost::system::error_code&)> mOnDisconnect;
     };
 }
 
