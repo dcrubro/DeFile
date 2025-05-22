@@ -81,6 +81,9 @@ namespace DeFile::Blockchain::ANet {
                     case EMessageType::TXTMSG:
                         LOG("Server received text: " << data);
                         break;
+                    case EMessageType::PING:
+                        mHandler->sendMessage(EMessageType::PONG, "");
+                        break;
                     case EMessageType::REQSYN:
                         LOG(reqAddr + " is requesting sync from block " << data);
                         break;

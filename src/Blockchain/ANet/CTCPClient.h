@@ -88,16 +88,17 @@ namespace DeFile::Blockchain::ANet {
         private:
             void mHandleMessage(EMessageType type, const std::string& data) {
                 using namespace DeFile::Blockchain::ANet;
+                std::string reqAddr = mHandler->socket().remote_endpoint().address().to_string();
                 switch (type) {
                     case EMessageType::HELLO:
-                        LOG("Client received HELLO: " << data << " FROM " + mHandler->socket().remote_endpoint().address().to_string());
+                        LOG("Client received HELLO: " << data << " FROM " << reqAddr);
                         mHandler->sendMessage(EMessageType::TXTMSG, "Test msg.");
                         break;
                     case EMessageType::TXTMSG:
                         LOG("Client received text: " << data);
                         break;
-                    case EMessageType::REQSYN:
-                        WARN("Receiving a message of type REQSYN is not supported on client side.");
+                    case EMessageType::PONG:
+                        LOG(reqAddr << " replied with PONG. The node is still alive.");
                         break;
                     default:
                         LOG("Client received unknown message type.");
