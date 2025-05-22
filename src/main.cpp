@@ -93,14 +93,30 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    //Reuse -h parameter temporarily
     try {
         boost::asio::io_context context;
         auto server = std::make_shared<ANet::CTCPServer>(context, 9393);
         auto client = std::make_shared<ANet::CTCPClient>(context, "127.0.0.1", "9393");
+
+        std::thread asioThread([&]() {
+            context.run(); //Makes networking async
+        });
+
         client->start();
-        context.run();
+
+        std::string line;
+        while (std::getline(std::cin, line)) {
+            if (line == "exit")
+                client->disconnect();
+            else if (line == "sync")
+                client->sendMessage(ANet::EMessageType::REQSYN, "144");
+        }
+
+        context.stop();
+        asioThread.join();
     } catch (const std::exception &e) {
-        std::cerr << "MAIN: Exception: " << e.what() << "\n";
+        ERROR("Exception: " << e.what());
     }
 
     //TODO: Remove the old netcode
@@ -137,7 +153,6 @@ int main(int argc, char **argv) {
     LOG("Chain intialized!");
     LOG("Current block count: " << chain.getBlockCount());
 
-
     if (chain.isValid())
         cout << "Chain is valid!\n";
     else
@@ -163,6 +178,7 @@ int main(int argc, char **argv) {
     LOG("\nWallet Address: " << wallet.getWalletAddress());
     std::cout << "\n\n";
 
+#if 0
     if (isNewChain)
     {
         //Temporary junk unverified tx to give ourselves some balance from system mint
@@ -253,6 +269,7 @@ int main(int argc, char **argv) {
     << "\n";
 
     printChain(&chain);
+#endif
 
     // Interrupt Signal
     struct sigaction sigIntHandler;

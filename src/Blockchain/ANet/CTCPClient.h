@@ -9,6 +9,7 @@
 #include <memory>
 #include <array>
 #include <boost/asio.hpp>
+#include "CNetHelper.h"
 
 using boost::asio::ip::tcp;
 
@@ -31,7 +32,8 @@ namespace DeFile::Blockchain::ANet {
                         if (!ec) {
                             boost::asio::async_connect(mSocket, endpoints,
                                 [this, self](boost::system::error_code ec, const tcp::endpoint&) {
-                                    if (!ec) {
+                                    if (!CNetHelper::isExpectedDisconnect(ec)) {
+                                        mConnected = true;
                                         LOG("Client connected.");
                                         mHandler = std::make_shared<CMessageHandler>(std::move(mSocket));
                                         mHandler->onMessage([this](EMessageType type, const std::string& data) {
@@ -39,7 +41,7 @@ namespace DeFile::Blockchain::ANet {
                                         });
                                         mHandler->start();
                                     
-                                        // Example: say hello
+                                        //Say hello
                                         mHandler->sendMessage(EMessageType::HELLO, "Hello, I am " + std::string(Constants::CConstants::NODE_IDENTIFIER));
                                     } else {
                                         ERROR("Client connect failed: " << ec.message());
@@ -52,7 +54,35 @@ namespace DeFile::Blockchain::ANet {
             }
 
             void sendMessage(EMessageType type, const std::string& data = "") {
-                if (mHandler) mHandler->sendMessage(type, data);
+                if (!mConnected) return;
+
+                if (mHandler) {
+                    boost::asio::post(mHandler->socket().get_executor(), [self = shared_from_this(), type, data]() {
+                        self->mHandler->sendMessage(type, data);
+                    });
+                }
+            }
+
+            void disconnect() {
+                if (mHandler && mConnected) {
+                    mHandler->sendMessage(EMessageType::DISCONNECT, "Goodbye");
+
+                    // Shutdown and close the socket
+                    boost::system::error_code ec;
+
+                    mHandler->socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                    if (ec) {
+                        ERROR("Shutdown error: " << ec.message());
+                    }
+                
+                    mHandler->socket().close(ec);
+                    if (ec) {
+                        ERROR("Close error: " << ec.message());
+                    }
+                
+                    mConnected = false;
+                    LOG("Client disconnected gracefully.");
+                }
             }
 
         private:
@@ -60,11 +90,14 @@ namespace DeFile::Blockchain::ANet {
                 using namespace DeFile::Blockchain::ANet;
                 switch (type) {
                     case EMessageType::HELLO:
-                        LOG("Client received HELLO: " << data);
+                        LOG("Client received HELLO: " << data << " FROM " + mHandler->socket().remote_endpoint().address().to_string());
                         mHandler->sendMessage(EMessageType::TXTMSG, "Test msg.");
                         break;
                     case EMessageType::TXTMSG:
                         LOG("Client received text: " << data);
+                        break;
+                    case EMessageType::REQSYN:
+                        WARN("Receiving a message of type REQSYN is not supported on client side.");
                         break;
                     default:
                         LOG("Client received unknown message type.");
@@ -72,6 +105,7 @@ namespace DeFile::Blockchain::ANet {
                 }
             }
             
+            bool mConnected = false;
             tcp::resolver mResolver;
             tcp::socket mSocket;
             std::shared_ptr<CMessageHandler> mHandler;

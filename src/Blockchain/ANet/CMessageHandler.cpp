@@ -34,7 +34,7 @@ namespace DeFile::Blockchain::ANet {
         auto self = shared_from_this();
         boost::asio::async_read(mSocket, boost::asio::buffer(mHeader),
             [this, self](boost::system::error_code ec, std::size_t) {
-                if (!ec) {
+                if (!CNetHelper::isExpectedDisconnect(ec)) {
                     mCurrentType = static_cast<EMessageType>(mHeader[0]);
                     uint16_t len = (mHeader[1] << 8) | mHeader[2];
                     mReadBody(len);
@@ -51,7 +51,7 @@ namespace DeFile::Blockchain::ANet {
 
         boost::asio::async_read(mSocket, boost::asio::buffer(mBody),
             [this, self](boost::system::error_code ec, std::size_t) {
-                if (!ec) {
+                if (!CNetHelper::isExpectedDisconnect(ec)) {
                     std::string payload(mBody.begin(), mBody.end());
                     if (mOnMessage) {
                         mOnMessage(mCurrentType, payload);
@@ -59,6 +59,10 @@ namespace DeFile::Blockchain::ANet {
                     mReadHeader(); // Keep listening
                 } else {
                     ERROR("Body read failed: " << ec.message());
+
+                    if (mOnDisconnect) {
+                        mOnDisconnect(ec);
+                    }
                 }
             }
         );
